@@ -34,6 +34,10 @@ func NewMultiServerLauncher(ms *Multiserver, logger *logrus.Logger) {
 func NewMultiServers(opts MultiserverParams) (*Multiserver, error) {
 	servers := make(map[string]*http.Server)
 
+	// Default bindings for metrics & pprof
+	opts.Config.SetDefault("bind.pprof", ":9001")
+	opts.Config.SetDefault("bind.metrics", ":9002")
+
 	for _, server := range opts.Servers {
 		// Getting server address
 		key := fmt.Sprintf("bind.%s", server.Name)

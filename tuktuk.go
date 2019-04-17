@@ -53,6 +53,9 @@ func (t *Tuktuk) Start(fn interface{}) {
 			NewSentry,
 			NewLogger,
 
+			// Default servers pprof & prometheus metrics
+			NewProfiler,
+
 			// Servers handling
 			NewMultiServers,
 
