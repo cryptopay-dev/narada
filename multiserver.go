@@ -61,6 +61,10 @@ func NewMultiServers(opts MultiserverParams) (*Multiserver, error) {
 				}).Info("starting server")
 				go func(name string, s *http.Server) {
 					if err := s.ListenAndServe(); err != nil {
+						if err == http.ErrServerClosed {
+							return
+						}
+
 						opts.Logger.WithFields(logrus.Fields{
 							"server_name": name,
 							"error":       err,
