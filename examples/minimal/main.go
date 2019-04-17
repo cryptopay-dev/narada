@@ -5,10 +5,20 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/labstack/echo"
 	"github.com/m1ome/tuktuk"
+	"github.com/sirupsen/logrus"
+)
+
+var (
+	jobsProcessed = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "jobs_processed",
+		Help: "Total number of jobs processed",
+	})
 )
 
 func NewApiServer() tuktuk.ServerResult {
@@ -36,6 +46,8 @@ func NewWorkers(logger *logrus.Logger) tuktuk.JobResult {
 		Period: time.Second,
 		Handler: func() {
 			times++
+
+			jobsProcessed.Inc()
 			logger.Infof("job run %d times", times)
 		},
 		Immediately: true,
