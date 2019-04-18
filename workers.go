@@ -21,80 +21,30 @@ type (
 		wg     *worker.Group
 	}
 
-	WorkerParams struct {
-		fx.In
-
-		Logger *logrus.Logger
-		Config *viper.Viper
-		Lc     fx.Lifecycle
-		Jobs   []Job `group:"jobs"`
-	}
-
 	Job struct {
 		Name        string
 		Handler     func()
 		Period      time.Duration
 		Immediately bool
 	}
-
-	JobResult struct {
-		fx.Out
-
-		Job Job `group:"jobs"`
-	}
 )
 
-func NewWorkers(opts WorkerParams) *Workers {
+func NewWorkers(logger *logrus.Logger, config *viper.Viper, lc fx.Lifecycle) *Workers {
 	w := &Workers{
 		wg:     worker.NewGroup(),
-		logger: opts.Logger,
-		config: opts.Config,
+		logger: logger,
+		config: config,
 	}
 
-	for _, job := range opts.Jobs {
-		opts.Logger.WithField("job", job).Info("adding new job to workers")
-
-		name := strings.ToLower(job.Name)
-		// Reading configuration
-		if opts.Config.IsSet(fmt.Sprintf("jobs.%s", name)) {
-			enabledKey := fmt.Sprintf("jobs.%s.enabled", name)
-			periodKey := fmt.Sprintf("jobs.%s.period", name)
-
-			opts.Config.SetDefault(enabledKey, true)
-			opts.Config.SetDefault(periodKey, job.Period)
-
-			if !opts.Config.GetBool(enabledKey) {
-				opts.Logger.Infof("skipping %s job, it's disabled by configuration", name)
-				continue
-			}
-
-			job.Period = opts.Config.GetDuration(periodKey)
-		}
-
-		// Appending handler
-		handler := func(ctx context.Context) {
-			opts.Logger.Infof("starting job %s", job.Name)
-			defer opts.Logger.Infof("finished job %s", job.Name)
-
-			job.Handler()
-		}
-
-		work := worker.New(handler)
-		work.ByTimer(job.Period)
-		work.SetImmediately(job.Immediately)
-
-		w.wg.Add(work)
-	}
-
-	opts.Lc.Append(fx.Hook{
+	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			opts.Logger.Info("starting jobs")
+			logger.Info("starting jobs")
 			w.wg.Run()
 
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			opts.Logger.Info("stopping jobs")
+			logger.Info("stopping jobs")
 			w.wg.Stop()
 
 			return nil
@@ -104,9 +54,40 @@ func NewWorkers(opts WorkerParams) *Workers {
 	return w
 }
 
-func NewJob(job Job) JobResult {
-	return JobResult{
-		Job: job,
+func (w Workers) Add(jobs ...Job) {
+	for _, job := range jobs {
+		w.logger.WithField("job", job).Info("adding new job to workers")
+
+		name := strings.ToLower(job.Name)
+		// Reading configuration
+		if w.config.IsSet(fmt.Sprintf("jobs.%s", name)) {
+			enabledKey := fmt.Sprintf("jobs.%s.enabled", name)
+			periodKey := fmt.Sprintf("jobs.%s.period", name)
+
+			w.config.SetDefault(enabledKey, true)
+			w.config.SetDefault(periodKey, job.Period)
+
+			if !w.config.GetBool(enabledKey) {
+				w.logger.Infof("skipping %s job, it's disabled by configuration", name)
+				continue
+			}
+
+			job.Period = w.config.GetDuration(periodKey)
+		}
+
+		// Appending handler
+		handler := func(ctx context.Context) {
+			w.logger.Infof("starting job %s", job.Name)
+			defer w.logger.Infof("finished job %s", job.Name)
+
+			job.Handler()
+		}
+
+		work := worker.New(handler)
+		work.ByTimer(job.Period)
+		work.SetImmediately(job.Immediately)
+
+		w.wg.Add(work)
 	}
 }
 

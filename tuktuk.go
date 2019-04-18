@@ -53,10 +53,6 @@ func (t *Tuktuk) Start(fn interface{}) {
 			NewSentry,
 			NewLogger,
 
-			// Default servers pprof & prometheus metrics
-			NewProfiler,
-			NewMetrics,
-
 			// Servers handling
 			NewMultiServers,
 
@@ -69,7 +65,18 @@ func (t *Tuktuk) Start(fn interface{}) {
 
 		fx.Provide(t.providers...),
 
-		fx.Invoke(NewMultiServerLauncher, NewWorkerLauncher, fn),
+		fx.Invoke(
+			// Adding servers by default
+			NewMetricsInvoke,
+			NewProfilerInvoke,
+
+			// Launching services
+			NewMultiServerLauncher,
+			NewWorkerLauncher,
+
+			// Invoke user-defined function
+			fn,
+		),
 	)
 
 	app.Run()

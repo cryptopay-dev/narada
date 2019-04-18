@@ -5,7 +5,7 @@ import (
 	"net/http/pprof"
 )
 
-func NewProfiler() ServerResult {
+func NewProfilerInvoke(ms *Multiserver) error {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
@@ -14,5 +14,5 @@ func NewProfiler() ServerResult {
 	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
-	return NewServer("pprof", mux)
+	return ms.Add("pprof", mux)
 }

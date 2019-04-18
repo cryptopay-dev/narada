@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/sirupsen/logrus"
-
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
 )
@@ -15,15 +14,7 @@ type (
 	Multiserver struct {
 		servers map[string]*http.Server
 		logger  *logrus.Logger
-	}
-
-	MultiserverParams struct {
-		fx.In
-
-		Config  *viper.Viper
-		Logger  *logrus.Logger
-		Lc      fx.Lifecycle
-		Servers []Server `group:"servers"`
+		config  *viper.Viper
 	}
 )
 
@@ -31,33 +22,40 @@ func NewMultiServerLauncher(ms *Multiserver, logger *logrus.Logger) {
 	logger.Info("starting HTTP server if we need to")
 }
 
-func NewMultiServers(opts MultiserverParams) (*Multiserver, error) {
+func (ms *Multiserver) Add(name string, handler http.Handler) error {
+	key := fmt.Sprintf("bind.%s", name)
+	addr := ms.config.GetString(key)
+	if addr == "" {
+		return fmt.Errorf("error starting server %s, empty address in config [%s]", name, key)
+	}
+
+	ms.servers[name] = &http.Server{
+		Addr:    addr,
+		Handler: handler,
+	}
+
+	return nil
+}
+
+func NewMultiServers(config *viper.Viper, logger *logrus.Logger, lc fx.Lifecycle) (*Multiserver, error) {
 	servers := make(map[string]*http.Server)
 
 	// Default bindings for metrics & pprof
-	opts.Config.SetDefault("bind.pprof", ":9001")
-	opts.Config.SetDefault("bind.metrics", ":9002")
+	config.SetDefault("bind.pprof", ":9001")
+	config.SetDefault("bind.metrics", ":9002")
 
-	for _, server := range opts.Servers {
-		// Getting server address
-		key := fmt.Sprintf("bind.%s", server.Name)
-		addr := opts.Config.GetString(key)
-		if addr == "" {
-			return nil, fmt.Errorf("error starting server %s, empty address in config [%s]", server.Name, key)
-		}
-
-		servers[server.Name] = &http.Server{
-			Addr:    addr,
-			Handler: server.Handler,
-		}
+	ms := &Multiserver{
+		servers: servers,
+		logger:  logger,
+		config:  config,
 	}
 
-	opts.Lc.Append(fx.Hook{
+	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			for name, server := range servers {
-				opts.Logger.WithFields(logrus.Fields{
+			for name, s := range ms.servers {
+				ms.logger.WithFields(logrus.Fields{
 					"server_name": name,
-					"address":     server.Addr,
+					"address":     s.Addr,
 				}).Info("starting server")
 				go func(name string, s *http.Server) {
 					if err := s.ListenAndServe(); err != nil {
@@ -65,22 +63,22 @@ func NewMultiServers(opts MultiserverParams) (*Multiserver, error) {
 							return
 						}
 
-						opts.Logger.WithFields(logrus.Fields{
+						ms.logger.WithFields(logrus.Fields{
 							"server_name": name,
 							"error":       err,
 						}).Error("error starting server")
 					}
-				}(name, server)
+				}(name, s)
 			}
 
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			for name, server := range servers {
-				opts.Logger.WithField("server_name", name).Info("shutdown server")
+			for name, s := range ms.servers {
+				ms.logger.WithField("server_name", name).Info("shutdown server")
 
-				if err := server.Shutdown(ctx); err != nil {
-					opts.Logger.WithFields(logrus.Fields{
+				if err := s.Shutdown(ctx); err != nil {
+					ms.logger.WithFields(logrus.Fields{
 						"server_name": name,
 						"error":       err,
 					}).Error("error while trying to shutdown server")
@@ -91,8 +89,5 @@ func NewMultiServers(opts MultiserverParams) (*Multiserver, error) {
 		},
 	})
 
-	return &Multiserver{
-		servers: servers,
-		logger:  opts.Logger,
-	}, nil
+	return ms, nil
 }

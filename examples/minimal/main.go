@@ -5,12 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-
-	"github.com/prometheus/client_golang/prometheus/promauto"
-
 	"github.com/labstack/echo"
 	"github.com/m1ome/tuktuk"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/sirupsen/logrus"
 )
 
@@ -21,7 +19,8 @@ var (
 	})
 )
 
-func NewApiServer() tuktuk.ServerResult {
+func App(ms *tuktuk.Multiserver, worker *tuktuk.Workers, logger *logrus.Logger) error {
+	// Creating server
 	e := echo.New()
 	e.HidePort = true
 	e.HideBanner = true
@@ -35,13 +34,9 @@ func NewApiServer() tuktuk.ServerResult {
 		return ctx.String(http.StatusOK, fmt.Sprintf("Hello, %s!", name))
 	})
 
-	return tuktuk.NewServer("api", e)
-}
-
-func NewWorkers(logger *logrus.Logger) tuktuk.JobResult {
+	// Adding jobs
 	times := 0
-
-	return tuktuk.NewJob(tuktuk.Job{
+	worker.Add(tuktuk.Job{
 		Name:   "dummy",
 		Period: time.Second,
 		Handler: func() {
@@ -52,11 +47,10 @@ func NewWorkers(logger *logrus.Logger) tuktuk.JobResult {
 		},
 		Immediately: true,
 	})
+
+	return ms.Add("api", e)
 }
 
 func main() {
-	tuktuk.New(
-		NewApiServer,
-		NewWorkers,
-	).Run()
+	tuktuk.New().Start(App)
 }

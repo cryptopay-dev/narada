@@ -2,6 +2,6 @@ package tuktuk
 
 import "github.com/prometheus/client_golang/prometheus/promhttp"
 
-func NewMetrics() ServerResult {
-	return NewServer("metrics", promhttp.Handler())
+func NewMetricsInvoke(ms *Multiserver) error {
+	return ms.Add("metrics", promhttp.Handler())
 }
