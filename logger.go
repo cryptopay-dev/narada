@@ -49,6 +49,9 @@ func NewLogger(config *viper.Viper) (*logrus.Logger, error) {
 		logger.AddHook(hook)
 	}
 
+	hook := NewLogrusSlackHook(config)
+	logger.AddHook(hook)
+
 	return logger, nil
 }
 

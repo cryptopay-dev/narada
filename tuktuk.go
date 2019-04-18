@@ -19,12 +19,15 @@ func (t Tuktuk) HandleError(err error) {
 	t.logger.Fatal(err)
 }
 
-func New(providers ...interface{}) *Tuktuk {
+func New(name string, version string, providers ...interface{}) *Tuktuk {
 	config, err := NewConfig()
 	if err != nil {
 		logger, _ := NewLogger(viper.New())
 		logger.WithField("error", err).Fatal("error reading configuration")
 	}
+
+	config.SetDefault("app.name", name)
+	config.SetDefault("app.version", version)
 
 	logger, err := NewLogger(config)
 	if err != nil {
