@@ -74,7 +74,6 @@ func (h LogrusSlackHook) Fire(entry *logrus.Entry) error {
 
 	attach := msg.NewAttachment()
 	if len(newEntry.Data) > 0 {
-
 		// Add a header above field data
 		attach.Text = "Message fields"
 
