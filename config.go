@@ -1,6 +1,7 @@
 package tuktuk
 
 import (
+	"os"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -10,11 +11,16 @@ func NewConfig() (*viper.Viper, error) {
 	v := viper.New()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
-
-	// Trying to read configuration file
-	v.SetConfigName("config")
 	v.SetConfigType("yaml")
-	v.AddConfigPath(".")
+
+	// Finding a path of configuration
+	path := os.Getenv("TUKTUK_CONFIG")
+	if path == "" {
+		v.SetConfigName("config")
+		v.AddConfigPath(".")
+	} else {
+		v.SetConfigFile(path)
+	}
 
 	if err := v.ReadInConfig(); err != nil {
 		return nil, err
