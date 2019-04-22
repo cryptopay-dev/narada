@@ -93,7 +93,3 @@ func (w Workers) Add(jobs ...Job) {
 		}(job)
 	}
 }
-
-func NewWorkerLauncher(wg *Workers, logger *logrus.Logger) {
-	logrus.Info("starting workers")
-}

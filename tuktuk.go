@@ -1,6 +1,8 @@
 package tuktuk
 
 import (
+	"context"
+
 	"github.com/m1ome/tuktuk/clients"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -12,6 +14,7 @@ type (
 		providers []interface{}
 		logger    *logrus.Logger
 		config    *viper.Viper
+		app       *fx.App
 	}
 )
 
@@ -44,7 +47,7 @@ func New(name string, version string, providers ...interface{}) *Tuktuk {
 
 func (t *Tuktuk) Start(fn interface{}) {
 	// Creating application
-	app := fx.New(
+	t.app = fx.New(
 		// Setting default logger to discard
 		fx.Logger(NewNopLogger()),
 
@@ -74,19 +77,18 @@ func (t *Tuktuk) Start(fn interface{}) {
 			NewProfilerInvoke,
 
 			// Launching services
-			NewMultiServerLauncher,
-			NewWorkerLauncher,
+			func(ms *Multiserver, workers *Workers, logger *logrus.Logger) {
+				logger.Info("launching services: workers & servers")
+			},
 
 			// Invoke user-defined function
 			fn,
 		),
 	)
 
-	app.Run()
+	t.app.Run()
 }
 
-func (t *Tuktuk) Run() {
-	t.Start(func(logger *logrus.Logger) {
-		logger.Info("starting application")
-	})
+func (t *Tuktuk) Stop() {
+	t.app.Stop(context.Background())
 }

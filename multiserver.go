@@ -18,10 +18,6 @@ type (
 	}
 )
 
-func NewMultiServerLauncher(ms *Multiserver, logger *logrus.Logger) {
-	logger.Info("starting HTTP server if we need to")
-}
-
 func (ms *Multiserver) Add(name string, handler http.Handler) error {
 	key := fmt.Sprintf("bind.%s", name)
 	addr := ms.config.GetString(key)

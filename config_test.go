@@ -23,19 +23,19 @@ func TestNewConfig(t *testing.T) {
 			assert.NotNil(t, cfg)
 			assert.NoError(t, err)
 
-			assert.Equal(t, ":8080", cfg.GetString("binding.api"))
+			assert.Equal(t, ":8080", cfg.GetString("bind.api"))
 		})
 	})
 
 	t.Run("Override configuration from env", func(t *testing.T) {
 		os.Setenv("TUKTUK_CONFIG", "./fixtures/config.yml")
-		os.Setenv("BINDING_API", ":8090")
+		os.Setenv("BIND_API", ":8090")
 		defer os.Clearenv()
 
 		cfg, err := NewConfig()
 		assert.NotNil(t, cfg)
 		assert.NoError(t, err)
 
-		assert.Equal(t, ":8090", cfg.GetString("binding.api"))
+		assert.Equal(t, ":8090", cfg.GetString("bind.api"))
 	})
 }
