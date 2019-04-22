@@ -80,8 +80,14 @@ func TestNewMultiServers(t *testing.T) {
 		}()
 
 		go func() {
-			_, err := http.Get("http://localhost:12346/ping")
-			assert.NoError(t, err)
+			for {
+				_, err := http.Get("http://localhost:12346/ping")
+				if err != nil {
+					continue
+				}
+
+				break
+			}
 		}()
 
 		select {
