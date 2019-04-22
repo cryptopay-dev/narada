@@ -1,6 +1,11 @@
 # 🚌 Tuktuk
 > Simple Golang assessment tool for rapid development
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/m1ome/tuktuk)](https://goreportcard.com/report/github.com/m1ome/tuktuk)
+[![GoDoc](https://godoc.org/github.com/m1ome/tuktuk?status.svg)](https://godoc.org/github.com/m1ome/tuktuk)
+[![Build Status](https://travis-ci.org/m1ome/tuktuk.svg?branch=master)](https://travis-ci.org/m1ome/tuktuk)
+[![Coverage Status](https://coveralls.io/repos/github/m1ome/tuktuk/badge.svg?branch=master)](https://coveralls.io/github/m1ome/tuktuk?branch=master)
+
 ## What is under the hood?
 Under the hood a lot of different and cool packages such as:
 - Logrus
