@@ -51,7 +51,7 @@ type LogrusSlackHook struct {
 func NewLogrusSlackHook(config *viper.Viper) LogrusSlackHook {
 	config.SetDefault("logger.slack", false)
 	config.SetDefault("logger.slack_url", "")
-	config.SetDefault("logger.slack_icon", ":ghost:")
+	config.SetDefault("logger.slack_icon", "")
 	config.SetDefault("logger.slack_emoji", ":ghost:")
 	config.SetDefault("logger.slack_username", config.GetString("app.name")+"_bot")
 
@@ -67,7 +67,7 @@ func NewLogrusSlackHook(config *viper.Viper) LogrusSlackHook {
 		emoji:    config.GetString("logger.slack_emoji"),
 		username: config.GetString("logger.slack_username"),
 		enabled:  config.GetBool("logger.slack"),
-		extra:    config.GetStringMap("logger.extra"),
+		extra:    config.GetStringMap("logger.slack_extra"),
 	}
 }
 
