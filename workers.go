@@ -59,6 +59,7 @@ func (w Workers) Add(jobs ...Job) {
 		w.logger.WithField("job", job).Info("adding new job to workers")
 
 		name := strings.ToLower(job.Name)
+
 		// Reading configuration
 		if w.config.IsSet(fmt.Sprintf("jobs.%s", name)) {
 			enabledKey := fmt.Sprintf("jobs.%s.enabled", name)
@@ -75,19 +76,21 @@ func (w Workers) Add(jobs ...Job) {
 			job.Period = w.config.GetDuration(periodKey)
 		}
 
-		// Appending handler
-		handler := func(ctx context.Context) {
-			w.logger.Infof("starting job %s", job.Name)
-			defer w.logger.Infof("finished job %s", job.Name)
+		func(j Job) {
+			// Appending handler
+			handler := func(ctx context.Context) {
+				w.logger.Infof("starting job %s", j.Name)
+				defer w.logger.Infof("finished job %s", j.Name)
 
-			job.Handler()
-		}
+				j.Handler()
+			}
 
-		work := worker.New(handler)
-		work.ByTimer(job.Period)
-		work.SetImmediately(job.Immediately)
+			work := worker.New(handler)
+			work.ByTimer(j.Period)
+			work.SetImmediately(j.Immediately)
 
-		w.wg.Add(work)
+			w.wg.Add(work)
+		}(job)
 	}
 }
 
