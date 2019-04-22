@@ -68,7 +68,7 @@ func TestNewMultiServers(t *testing.T) {
 			done <- true
 		})
 
-		cfg.Set("bind.test", ":12345")
+		cfg.Set("bind.test", ":12346")
 		{
 			err := ms.Add("test", mux)
 			assert.NoError(t, err)
@@ -80,7 +80,7 @@ func TestNewMultiServers(t *testing.T) {
 		}()
 
 		go func() {
-			_, err := http.Get("http://localhost:12345/ping")
+			_, err := http.Get("http://localhost:12346/ping")
 			assert.NoError(t, err)
 		}()
 
