@@ -8,6 +8,7 @@ require (
 	github.com/certifi/gocertifi v0.0.0-20190415143156-92f724a62f3e // indirect
 	github.com/chapsuk/wait v0.3.1 // indirect
 	github.com/chapsuk/worker v0.4.0
+	github.com/dnaeon/go-vcr v1.0.1
 	github.com/getsentry/raven-go v0.2.0
 	github.com/go-pg/pg v8.0.4+incompatible
 	github.com/go-redis/redis v6.15.2+incompatible // indirect
@@ -28,5 +29,6 @@ require (
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1 // indirect
 	golang.org/x/sys v0.0.0-20190222072716-a9d3bda3a223 // indirect
+	gopkg.in/h2non/gock.v1 v1.0.14
 	mellium.im/sasl v0.2.1 // indirect
 )

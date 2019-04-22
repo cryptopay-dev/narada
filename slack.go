@@ -53,7 +53,6 @@ func NewClient(url string) *SlackClient {
 }
 
 func (c *SlackClient) SendMessage(msg *SlackMessage) error {
-
 	body, _ := json.Marshal(msg)
 	buf := bytes.NewReader(body)
 
@@ -71,20 +70,16 @@ func (c *SlackClient) SendMessage(msg *SlackMessage) error {
 	return nil
 }
 
-func (m *SlackMessage) NewAttachment() *SlackAttachment {
-	a := &SlackAttachment{}
-	m.AddAttachment(a)
-	return a
+func NewAttachment() *SlackAttachment {
+	return &SlackAttachment{}
 }
 
 func (m *SlackMessage) AddAttachment(a *SlackAttachment) {
 	m.Attachments = append(m.Attachments, a)
 }
 
-func (a *SlackAttachment) NewField() *SlackField {
-	f := &SlackField{}
-	a.AddField(f)
-	return f
+func NewField() *SlackField {
+	return &SlackField{}
 }
 
 func (a *SlackAttachment) AddField(f *SlackField) {

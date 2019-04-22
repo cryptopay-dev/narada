@@ -72,13 +72,13 @@ func (h LogrusSlackHook) Fire(entry *logrus.Entry) error {
 		Message: entry.Message,
 	}
 
-	attach := msg.NewAttachment()
+	attach := NewAttachment()
 	if len(newEntry.Data) > 0 {
 		// Add a header above field data
 		attach.Text = "Message fields"
 
 		for k, v := range newEntry.Data {
-			slackField := &SlackField{}
+			slackField := NewField()
 
 			slackField.Title = k
 			slackField.Value = fmt.Sprint(v)
