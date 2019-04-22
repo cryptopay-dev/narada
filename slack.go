@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 type (
 	SlackClient struct {
 		Url string
+		c   *http.Client
 	}
 
 	SlackMessage struct {
@@ -49,14 +51,19 @@ func (e *SlackError) Error() string {
 }
 
 func NewClient(url string) *SlackClient {
-	return &SlackClient{url}
+	return &SlackClient{
+		Url: url,
+		c: &http.Client{
+			Timeout: time.Second * 10,
+		},
+	}
 }
 
 func (c *SlackClient) SendMessage(msg *SlackMessage) error {
 	body, _ := json.Marshal(msg)
 	buf := bytes.NewReader(body)
 
-	resp, err := http.Post(c.Url, "application/json", buf)
+	resp, err := c.c.Post(c.Url, "application/json", buf)
 	if err != nil {
 		return err
 	}

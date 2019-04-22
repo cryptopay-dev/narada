@@ -9,6 +9,8 @@ import (
 )
 
 func TestNewClient(t *testing.T) {
+	gock.Clean()
+
 	// Reading fixture
 	buf, err := ioutil.ReadFile("./fixtures/slack/request.json")
 	assert.NoError(t, err)
@@ -24,11 +26,11 @@ func TestNewClient(t *testing.T) {
 
 		t.Run("Bad response code", func(t *testing.T) {
 			defer gock.Off()
-			gock.New("http://your_token.slack.com").
+			gock.New("http://slack_404_testing.slack.com").
 				Post("/").
 				Reply(404)
 
-			client := NewClient("http://your_token.slack.com")
+			client := NewClient("http://slack_404_testing.slack.com")
 			msg := &SlackMessage{}
 
 			err := client.SendMessage(msg)
@@ -38,13 +40,13 @@ func TestNewClient(t *testing.T) {
 
 	t.Run("Success", func(t *testing.T) {
 		defer gock.Off()
-		gock.New("http://your_token.slack.com").
+		gock.New("http://slack_testing.slack.com").
 			Post("/").
 			MatchType("json").
 			BodyString(string(buf)).
 			Reply(200)
 
-		client := NewClient("http://your_token.slack.com")
+		client := NewClient("http://slack_testing.slack.com")
 		assert.NotNil(t, client)
 
 		msg := &SlackMessage{

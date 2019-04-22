@@ -4,26 +4,21 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/spf13/viper"
+
 	"github.com/getsentry/raven-go"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 )
 
-type (
-	LogrusSentryHook struct {
-		client *raven.Client
-	}
+type LogrusSentryHook struct {
+	client *raven.Client
+}
 
-	LogrusSlackHook struct {
-		url      string
-		icon     string
-		channel  string
-		emoji    string
-		username string
-		extra    map[string]interface{}
-		enabled  bool
+func NewLogrusSentryHook(client *raven.Client) LogrusSentryHook {
+	return LogrusSentryHook{
+		client: client,
 	}
-)
+}
 
 func (h LogrusSentryHook) Fire(entry *logrus.Entry) error {
 	var notifyErr error
@@ -41,6 +36,39 @@ func (h LogrusSentryHook) Fire(entry *logrus.Entry) error {
 
 func (h LogrusSentryHook) Levels() []logrus.Level {
 	return []logrus.Level{logrus.ErrorLevel, logrus.FatalLevel, logrus.PanicLevel}
+}
+
+type LogrusSlackHook struct {
+	url      string
+	icon     string
+	channel  string
+	emoji    string
+	username string
+	extra    map[string]interface{}
+	enabled  bool
+}
+
+func NewLogrusSlackHook(config *viper.Viper) LogrusSlackHook {
+	config.SetDefault("logger.slack", false)
+	config.SetDefault("logger.slack_url", "")
+	config.SetDefault("logger.slack_icon", ":ghost:")
+	config.SetDefault("logger.slack_emoji", ":ghost:")
+	config.SetDefault("logger.slack_username", config.GetString("app.name")+"_bot")
+
+	// Binding extra fields
+	extra := make(map[string]interface{})
+	extra["app_name"] = config.GetString("app.name")
+	extra["app_version"] = config.GetString("app.version")
+
+	return LogrusSlackHook{
+		url:      config.GetString("logger.slack_url"),
+		icon:     config.GetString("logger.slack_icon"),
+		channel:  config.GetString("logger.slack_channel"),
+		emoji:    config.GetString("logger.slack_emoji"),
+		username: config.GetString("logger.slack_username"),
+		enabled:  config.GetBool("logger.slack"),
+		extra:    config.GetStringMap("logger.extra"),
+	}
 }
 
 func (h LogrusSlackHook) Fire(entry *logrus.Entry) error {
@@ -96,6 +124,8 @@ func (h LogrusSlackHook) Fire(entry *logrus.Entry) error {
 	attach.Fallback = newEntry.Message
 	attach.Color = "danger"
 
+	msg.AddAttachment(attach)
+
 	c := NewClient(h.url)
 
 	go c.SendMessage(msg)
@@ -105,32 +135,4 @@ func (h LogrusSlackHook) Fire(entry *logrus.Entry) error {
 
 func (h LogrusSlackHook) Levels() []logrus.Level {
 	return []logrus.Level{logrus.ErrorLevel, logrus.FatalLevel, logrus.PanicLevel}
-}
-
-func NewLogrusSentryHook(client *raven.Client) LogrusSentryHook {
-	return LogrusSentryHook{
-		client: client,
-	}
-}
-
-func NewLogrusSlackHook(config *viper.Viper) LogrusSlackHook {
-	config.SetDefault("logger.slack", false)
-	config.SetDefault("logger.slack_url", "")
-	config.SetDefault("logger.slack_icon", ":ghost:")
-	config.SetDefault("logger.slack_emoji", ":ghost:")
-	config.SetDefault("logger.slack_username", config.GetString("app.name")+"_bot")
-
-	// Binding extra fields
-	extra := make(map[string]interface{})
-	extra["app_name"] = config.GetString("app.name")
-	extra["app_version"] = config.GetString("app.version")
-
-	return LogrusSlackHook{
-		url:      config.GetString("logger.slack_url"),
-		icon:     config.GetString("logger.slack_icon"),
-		channel:  config.GetString("logger.slack_channel"),
-		emoji:    config.GetString("logger.slack_emoji"),
-		username: config.GetString("logger.slack_username"),
-		enabled:  config.GetBool("logger.slack"),
-	}
 }
