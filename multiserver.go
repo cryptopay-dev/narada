@@ -29,6 +29,10 @@ func (ms *Multiserver) Add(name string, handler http.Handler) error {
 		return fmt.Errorf("error starting server %s, empty address in config [%s]", name, key)
 	}
 
+	if _, ok := ms.servers[name]; ok {
+		return fmt.Errorf("error adding server, duplicate key: %s", name)
+	}
+
 	ms.servers[name] = &http.Server{
 		Addr:    addr,
 		Handler: handler,
