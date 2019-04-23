@@ -3,6 +3,8 @@ package tuktuk
 import (
 	"context"
 
+	"github.com/m1ome/tuktuk/lib"
+
 	"github.com/m1ome/tuktuk/clients"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -59,6 +61,9 @@ func (t *Tuktuk) Start(fn interface{}) {
 			NewSentry,
 			NewLogger,
 
+			// Libraries
+			lib.NewRedisLocker,
+
 			// Servers handling
 			NewMultiServers,
 
@@ -67,6 +72,7 @@ func (t *Tuktuk) Start(fn interface{}) {
 
 			// Clients
 			clients.NewPostgreSQL,
+			clients.NewRedis,
 		),
 
 		fx.Provide(t.providers...),

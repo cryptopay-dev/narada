@@ -4,13 +4,15 @@ go 1.12
 
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
-	github.com/bsm/redis-lock v8.0.0+incompatible // indirect
+	github.com/bsm/redis-lock v8.0.0+incompatible
 	github.com/certifi/gocertifi v0.0.0-20190415143156-92f724a62f3e // indirect
 	github.com/chapsuk/wait v0.3.1 // indirect
 	github.com/chapsuk/worker v0.4.0
 	github.com/getsentry/raven-go v0.2.0
 	github.com/go-pg/pg v8.0.4+incompatible
-	github.com/go-redis/redis v6.15.2+incompatible // indirect
+	github.com/go-redis/redis v6.15.2+incompatible
+	github.com/go-redsync/redsync v1.2.0
+	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/jinzhu/inflection v0.0.0-20180308033659-04140366298a // indirect
 	github.com/onsi/ginkgo v1.8.0 // indirect
 	github.com/onsi/gomega v1.5.0 // indirect
