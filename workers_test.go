@@ -124,6 +124,10 @@ func TestNewWorkers(t *testing.T) {
 	})
 
 	t.Run("Exclusive checks", func(t *testing.T) {
+		if testing.Short() {
+			t.Skip("skipping test in short mode")
+		}
+
 		aCounter := make(chan bool, 1)
 		bCounter := make(chan bool, 1)
 		cCounter := make(chan bool, 1)
