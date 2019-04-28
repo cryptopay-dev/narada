@@ -44,4 +44,36 @@ logger:
     slack_emoji: ":ghost:"
     slack_username: "<YOUR_APP_NAME>_bot"
     slack_channel: "" #  Slack username [Required when slack is true]
-``` 
+```
+
+### Workers
+This module generates
+
+**Dependency:** `*tuktuk.Workers`
+
+### Clients
+Here all clients that are provided automatically located.
+
+### Redis
+**Dependency:** `*redis.Client`
+**Configuration:**  
+```yaml
+redis:
+    addr: "" # Redis address, in e.g.: 127.0.0.1:6379
+    db: 0
+    password: ""
+    pool_size: 10
+    idle_timeout: 60s
+```
+
+### PostgreSQL
+**Dependency:** `*pg.DB`  
+**Configuration:**
+```yaml
+database:
+    addr: "" # PostgreSQL address
+    user: ""
+    password: ""
+    database: ""
+    pool: 10
+```
