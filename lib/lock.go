@@ -4,7 +4,6 @@ import (
 	"time"
 
 	lock "github.com/bsm/redis-lock"
-
 	"github.com/go-redis/redis"
 )
 
@@ -23,7 +22,7 @@ type (
 	}
 )
 
-func NewRedisLocker(redis *redis.Client) *RedisLock {
+func NewRedisLocker(redis *redis.Client) Locker {
 	return &RedisLock{
 		redis: redis,
 	}

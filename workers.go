@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/m1ome/tuktuk/lib"
+
 	"go.uber.org/fx"
 
 	"github.com/spf13/viper"
@@ -16,24 +18,35 @@ import (
 
 type (
 	Workers struct {
-		logger *logrus.Logger
-		config *viper.Viper
-		wg     *worker.Group
+		locker   lib.Locker
+		logger   *logrus.Entry
+		config   *viper.Viper
+		handlers map[string]*jobHandler
+		wg       *worker.Group
 	}
 
 	Job struct {
-		Name        string
-		Handler     func()
-		Period      time.Duration
-		Immediately bool
+		Name             string
+		Handler          func()
+		Period           time.Duration
+		Exclusive        bool
+		ExclusiveTimeout time.Duration
+		Immediately      bool
 	}
 )
 
-func NewWorkers(logger *logrus.Logger, config *viper.Viper, lc fx.Lifecycle) *Workers {
+func NewWorkers(
+	logger *logrus.Logger,
+	locker lib.Locker,
+	config *viper.Viper,
+	lc fx.Lifecycle,
+) *Workers {
 	w := &Workers{
-		wg:     worker.NewGroup(),
-		logger: logger,
-		config: config,
+		wg:       worker.NewGroup(),
+		logger:   logger.WithField("module", "workers"),
+		locker:   locker,
+		config:   config,
+		handlers: make(map[string]*jobHandler),
 	}
 
 	lc.Append(fx.Hook{
@@ -47,6 +60,16 @@ func NewWorkers(logger *logrus.Logger, config *viper.Viper, lc fx.Lifecycle) *Wo
 			logger.Info("stopping jobs")
 			w.wg.Stop()
 
+			if len(w.handlers) > 0 {
+				logger.Info("releasing locks from handlers")
+
+				for name, handler := range w.handlers {
+					if err := handler.ReleaseLocks(); err != nil {
+						w.logger.WithError(err).WithField("job_name", name).Error("error releasing lock")
+					}
+				}
+			}
+
 			return nil
 		},
 	})
@@ -54,10 +77,9 @@ func NewWorkers(logger *logrus.Logger, config *viper.Viper, lc fx.Lifecycle) *Wo
 	return w
 }
 
-func (w Workers) Add(jobs ...Job) {
+func (w *Workers) Add(jobs ...Job) {
 	for _, job := range jobs {
 		w.logger.WithField("job", job).Info("adding new job to workers")
-
 		name := strings.ToLower(job.Name)
 
 		// Reading configuration
@@ -77,19 +99,18 @@ func (w Workers) Add(jobs ...Job) {
 		}
 
 		func(j Job) {
-			// Appending handler
-			handler := func(ctx context.Context) {
-				w.logger.Infof("starting job %s", j.Name)
-				defer w.logger.Infof("finished job %s", j.Name)
+			// Creating handler
+			jh := newJobHandler(job, w.locker, w.logger)
 
-				j.Handler()
-			}
-
-			work := worker.New(handler)
+			// Appending job
+			work := worker.New(jh.Handler())
 			work.ByTimer(j.Period)
 			work.SetImmediately(j.Immediately)
 
 			w.wg.Add(work)
+
+			// Adding to handlers
+			w.handlers[j.Name] = jh
 		}(job)
 	}
 }
