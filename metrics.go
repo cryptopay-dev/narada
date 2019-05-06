@@ -1,4 +1,4 @@
-package tuktuk
+package narada
 
 import "github.com/prometheus/client_golang/prometheus/promhttp"
 

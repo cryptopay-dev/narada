@@ -1,4 +1,4 @@
-package tuktuk
+package narada
 
 import (
 	"os"
@@ -16,7 +16,7 @@ func TestNewConfig(t *testing.T) {
 		})
 
 		t.Run("Success on configuration", func(t *testing.T) {
-			os.Setenv("TUKTUK_CONFIG", "./fixtures/config.yml")
+			os.Setenv("NARADA_CONFIG", "./fixtures/config.yml")
 			defer os.Clearenv()
 
 			cfg, err := NewConfig()
@@ -28,7 +28,7 @@ func TestNewConfig(t *testing.T) {
 	})
 
 	t.Run("Override configuration from env", func(t *testing.T) {
-		os.Setenv("TUKTUK_CONFIG", "./fixtures/config.yml")
+		os.Setenv("NARADA_CONFIG", "./fixtures/config.yml")
 		os.Setenv("BIND_API", ":8090")
 		defer os.Clearenv()
 

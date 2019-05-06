@@ -1,6 +1,6 @@
-package tuktuk
+package narada
 
 const (
-	Prefix  = "tuktuk"
+	Prefix  = "narada"
 	Version = "0.0.1"
 )

@@ -1,4 +1,4 @@
-package tuktuk
+package narada
 
 import (
 	"context"
@@ -6,14 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/m1ome/tuktuk/lib"
-
-	"go.uber.org/fx"
-
-	"github.com/spf13/viper"
+	"github.com/m1ome/narada/lib"
 
 	"github.com/chapsuk/worker"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
+	"go.uber.org/fx"
 )
 
 type (

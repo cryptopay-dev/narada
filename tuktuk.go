@@ -1,18 +1,18 @@
-package tuktuk
+package narada
 
 import (
 	"context"
 
-	"github.com/m1ome/tuktuk/lib"
+	"github.com/m1ome/narada/clients"
+	"github.com/m1ome/narada/lib"
 
-	"github.com/m1ome/tuktuk/clients"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
 )
 
 type (
-	Tuktuk struct {
+	Narada struct {
 		providers []interface{}
 		logger    *logrus.Logger
 		config    *viper.Viper
@@ -20,11 +20,11 @@ type (
 	}
 )
 
-func (t Tuktuk) HandleError(err error) {
+func (t Narada) HandleError(err error) {
 	t.logger.Fatal(err)
 }
 
-func New(name string, version string, providers ...interface{}) *Tuktuk {
+func New(name string, version string, providers ...interface{}) *Narada {
 	config, err := NewConfig()
 	if err != nil {
 		logger, _ := NewLogger(viper.New())
@@ -40,14 +40,14 @@ func New(name string, version string, providers ...interface{}) *Tuktuk {
 		logger.WithField("error", err).Fatal("error creating logger from configuration")
 	}
 
-	return &Tuktuk{
+	return &Narada{
 		providers: providers,
 		logger:    logger,
 		config:    config,
 	}
 }
 
-func (t *Tuktuk) Start(fn interface{}) {
+func (t *Narada) Start(fn interface{}) {
 	// Creating application
 	t.app = fx.New(
 		// Setting default logger to discard
@@ -95,6 +95,6 @@ func (t *Tuktuk) Start(fn interface{}) {
 	t.app.Run()
 }
 
-func (t *Tuktuk) Stop() {
+func (t *Narada) Stop() {
 	t.app.Stop(context.Background())
 }

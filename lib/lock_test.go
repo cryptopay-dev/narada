@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/m1ome/tuktuk/clients"
+	"github.com/m1ome/narada/clients"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )

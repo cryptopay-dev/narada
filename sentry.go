@@ -1,4 +1,4 @@
-package tuktuk
+package narada
 
 import (
 	"github.com/getsentry/raven-go"

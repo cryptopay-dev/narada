@@ -6,11 +6,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/m1ome/tuktuk"
+	"github.com/m1ome/narada"
 	"github.com/sirupsen/logrus"
 )
 
-func Run(ms *tuktuk.Multiserver, workers *tuktuk.Workers, logger *logrus.Logger) error {
+func Run(ms *narada.Multiserver, workers *narada.Workers, logger *logrus.Logger) error {
 	// Atomic counter
 	var counter uint64
 
@@ -29,7 +29,7 @@ func Run(ms *tuktuk.Multiserver, workers *tuktuk.Workers, logger *logrus.Logger)
 	}
 
 	// Adding workers
-	job := tuktuk.Job{
+	job := narada.Job{
 		Name: "counter",
 		Handler: func() {
 			atomic.AddUint64(&counter, 1)
@@ -43,5 +43,5 @@ func Run(ms *tuktuk.Multiserver, workers *tuktuk.Workers, logger *logrus.Logger)
 }
 
 func main() {
-	tuktuk.New("api_server", "development").Start(Run)
+	narada.New("api_server", "development").Start(Run)
 }

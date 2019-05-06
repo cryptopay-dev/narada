@@ -1,10 +1,10 @@
-# 🚌 Tuktuk
-> Simple Golang assessment tool for rapid development
+# 🖖🚀 Narada
+> Rapid web development, all in one place
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/m1ome/tuktuk)](https://goreportcard.com/report/github.com/m1ome/tuktuk)
-[![GoDoc](https://godoc.org/github.com/m1ome/tuktuk?status.svg)](https://godoc.org/github.com/m1ome/tuktuk)
-[![Build Status](https://travis-ci.org/m1ome/tuktuk.svg?branch=master)](https://travis-ci.org/m1ome/tuktuk)
-[![Coverage Status](https://coveralls.io/repos/github/m1ome/tuktuk/badge.svg?branch=master)](https://coveralls.io/github/m1ome/tuktuk?branch=master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/m1ome/narada)](https://goreportcard.com/report/github.com/m1ome/narada)
+[![GoDoc](https://godoc.org/github.com/m1ome/narada?status.svg)](https://godoc.org/github.com/m1ome/narada)
+[![Build Status](https://travis-ci.org/m1ome/narada.svg?branch=master)](https://travis-ci.org/m1ome/narada)
+[![Coverage Status](https://coveralls.io/repos/github/m1ome/narada/badge.svg?branch=master)](https://coveralls.io/github/m1ome/narada?branch=master)
 
 ## What is under the hood?
 Under the hood a lot of different and cool packages such as:
@@ -26,7 +26,7 @@ Also it supports:
 ### Config
 **Dependency:** `*viper.Viper`  
 **Configuration:**  
-Configuration file are located at `TUKTUK_CONFIG` or `config.yml`.  
+Configuration file are located at `NARADA_CONFIG` or `config.yml`.  
 Environment `BINDING_API` will be replaced to `binding.api`.  
 
 
@@ -49,7 +49,7 @@ logger:
 ### Workers
 This module generates
 
-**Dependency:** `*tuktuk.Workers`
+**Dependency:** `*narada.Workers`
 
 ### Clients
 Here all clients that are provided automatically located.

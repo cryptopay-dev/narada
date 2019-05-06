@@ -1,4 +1,4 @@
-package tuktuk
+package narada
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/m1ome/tuktuk/lib"
+	"github.com/m1ome/narada/lib"
 )
 
 type jobHandler struct {

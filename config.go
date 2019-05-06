@@ -1,4 +1,4 @@
-package tuktuk
+package narada
 
 import (
 	"os"
@@ -14,7 +14,7 @@ func NewConfig() (*viper.Viper, error) {
 	v.SetConfigType("yaml")
 
 	// Finding a path of configuration
-	path := os.Getenv("TUKTUK_CONFIG")
+	path := os.Getenv("NARADA_CONFIG")
 	if path == "" {
 		v.SetConfigName("config")
 		v.AddConfigPath(".")

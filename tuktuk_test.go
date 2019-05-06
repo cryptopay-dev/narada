@@ -1,4 +1,4 @@
-package tuktuk
+package narada
 
 import (
 	"net/http"
@@ -8,7 +8,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	os.Setenv("TUKTUK_CONFIG", "./fixtures/config.yml")
+	os.Setenv("NARADA_CONFIG", "./fixtures/config.yml")
 	os.Setenv("BIND_API", ":12345")
 	os.Setenv("LOGGER_LEVEL", "error")
 	defer os.Clearenv()
