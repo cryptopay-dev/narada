@@ -37,10 +37,10 @@ func Migrate(p *narada.Narada) cli.Command {
 
 				conn := fmt.Sprintf(
 					"postgres://%s:%s@%s/%s?sslmode=disable",
-					v.GetString("postgres.user"),
-					v.GetString("postgres.password"),
-					v.GetString("postgres.address"),
-					v.GetString("postgres.database"),
+					v.GetString("database.user"),
+					v.GetString("database.password"),
+					v.GetString("database.address"),
+					v.GetString("database.database"),
 				)
 
 				db, err := sql.Open("postgres", conn)
