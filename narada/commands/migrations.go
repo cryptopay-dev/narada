@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -27,7 +28,7 @@ func Migrate(p *narada.Narada) cli.Command {
 			cli.StringFlag{Name: "dir"},
 		},
 		Action: func(c *cli.Context) error {
-			p.Start(func(logger *logrus.Logger, v *viper.Viper) error {
+			return Run(context.Background(), func(logger *logrus.Logger, v *viper.Viper) error {
 				logger.Println("starting migrations")
 				dir := c.String("dir")
 
@@ -71,7 +72,7 @@ func CreateMigration(p *narada.Narada) cli.Command {
 			cli.StringFlag{Name: "type"},
 		},
 		Action: func(c *cli.Context) error {
-			p.Start(func(logger *logrus.Logger, v *viper.Viper) error {
+			return Run(context.Background(), func(logger *logrus.Logger, v *viper.Viper) error {
 				name := c.String("name")
 				dir := c.String("dir")
 				t := c.String("type")

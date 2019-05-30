@@ -3,9 +3,8 @@ package clients
 import (
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/go-pg/pg"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 )

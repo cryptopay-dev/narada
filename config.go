@@ -7,6 +7,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+// NewConfig creates a new configuration, by default config file will be `config.yml` in same directory you run application
+// if you want to override it you should provide `NARADA_CONFIG` environment variable.
 func NewConfig() (*viper.Viper, error) {
 	v := viper.New()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
