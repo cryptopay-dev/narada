@@ -6,6 +6,7 @@ services:
   - redis-server
 before_install:
   - go get github.com/mattn/goveralls
+env:
+  - GO111MODULE=on  
 script:
-  - env GO111MODULE=on go build
   - "$HOME/gopath/bin/goveralls -service=travis-ci"
