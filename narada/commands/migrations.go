@@ -40,7 +40,7 @@ func Migrate(p *narada.Narada) cli.Command {
 					"postgres://%s:%s@%s/%s?sslmode=disable",
 					v.GetString("database.user"),
 					v.GetString("database.password"),
-					v.GetString("database.address"),
+					v.GetString("database.addr"),
 					v.GetString("database.database"),
 				)
 
