@@ -6,9 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/m1ome/narada/lib"
-
 	"github.com/chapsuk/worker"
+	"github.com/go-redis/redis"
+	"github.com/m1ome/narada/lib"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
@@ -23,6 +24,15 @@ type (
 		wg       *worker.Group
 	}
 
+	WorkersOptions struct {
+		fx.In
+
+		Logger *logrus.Logger
+		Config *viper.Viper
+		Locker lib.Locker `optional:"true"`
+		LC     fx.Lifecycle
+	}
+
 	Job struct {
 		Name             string
 		Handler          func()
@@ -33,33 +43,62 @@ type (
 	}
 )
 
-func NewWorkers(
-	logger *logrus.Logger,
-	locker lib.Locker,
-	config *viper.Viper,
-	lc fx.Lifecycle,
-) *Workers {
+func NewWorkers(opts WorkersOptions) (*Workers, error) {
+	// We should create locker if we need to
+
+	var locker lib.Locker
+	if opts.Locker != nil {
+		locker = opts.Locker
+	} else {
+		config := opts.Config.Sub("workers.locker")
+
+		if config != nil {
+			lockerType := config.GetString("type")
+			switch lockerType {
+			case "redis":
+				config.SetDefault("redis.pool_size", 10)
+				config.SetDefault("redis.idle_timeout", time.Second*60)
+
+				client := redis.NewClient(&redis.Options{
+					Addr:        config.GetString("redis.addr"),
+					PoolSize:    config.GetInt("redis.pool_size"),
+					DB:          config.GetInt("redis.db"),
+					IdleTimeout: config.GetDuration("redis.idle_timeout"),
+					Password:    config.GetString("redis.password"),
+				})
+
+				if err := client.Ping().Err(); err != nil {
+					return nil, errors.Wrap(err, "error connecting to Redis")
+				}
+
+				locker = lib.NewRedisLocker(client)
+			default:
+				return nil, fmt.Errorf("unknown locker type '%s', supported: redis", lockerType)
+			}
+		}
+	}
+
 	w := &Workers{
 		wg:       worker.NewGroup(),
-		logger:   logger.WithField("module", "workers"),
+		logger:   opts.Logger.WithField("module", "workers"),
 		locker:   locker,
-		config:   config,
+		config:   opts.Config,
 		handlers: make(map[string]*jobHandler),
 	}
 
-	lc.Append(fx.Hook{
+	opts.LC.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			logger.Info("starting jobs")
+			w.logger.Info("starting jobs")
 			w.wg.Run()
 
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
-			logger.Info("stopping jobs")
+			w.logger.Info("stopping jobs")
 			w.wg.Stop()
 
 			if len(w.handlers) > 0 {
-				logger.Info("releasing locks from handlers")
+				w.logger.Info("releasing locks from handlers")
 
 				for name, handler := range w.handlers {
 					if err := handler.ReleaseLocks(); err != nil {
@@ -72,7 +111,7 @@ func NewWorkers(
 		},
 	})
 
-	return w
+	return w, nil
 }
 
 func (w *Workers) Add(jobs ...Job) {

@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"github.com/m1ome/narada/clients"
-	"github.com/m1ome/narada/lib"
-
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
@@ -61,9 +59,6 @@ func (t *Narada) Start(fn interface{}) {
 			NewSentry,
 			NewLogger,
 
-			// Libraries
-			lib.NewRedisLocker,
-
 			// Servers handling
 			NewMultiServers,
 
@@ -81,11 +76,6 @@ func (t *Narada) Start(fn interface{}) {
 			// Adding servers by default
 			NewMetricsInvoke,
 			NewProfilerInvoke,
-
-			// Launching services
-			func(ms *Multiserver, workers *Workers, logger *logrus.Logger) {
-				logger.Info("launching services: workers & servers")
-			},
 
 			// Invoke user-defined function
 			fn,

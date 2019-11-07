@@ -6,7 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/m1ome/narada/clients"
+	"github.com/stretchr/testify/require"
+
 	"github.com/m1ome/narada/lib"
 
 	"github.com/spf13/viper"
@@ -41,7 +42,14 @@ func TestNewWorkers(t *testing.T) {
 		lc := fxtest.NewLifecycle(t)
 		lock := &mockedLocker{}
 
-		w := NewWorkers(logger, lock, cfg, lc)
+		w, err := NewWorkers(WorkersOptions{
+			Logger: logger,
+			Config: cfg,
+			LC:     lc,
+			Locker: lock,
+		})
+		assert.NoError(t, err)
+
 		//Adding jobs
 		wg := sync.WaitGroup{}
 		wg.Add(6)
@@ -147,6 +155,8 @@ func TestNewWorkers(t *testing.T) {
 					counters[2] = counters[2] + 1
 				}
 
+				//fmt.Printf("#%v\n", counters)
+
 				if counters[0] == 5 || counters[1] == 5 || counters[2] == 5 {
 					wait.Done()
 					return
@@ -157,14 +167,9 @@ func TestNewWorkers(t *testing.T) {
 		// Creating two worker groups and running them
 		cfg := viper.New()
 		cfg.Set("jobs.first.enabled", true)
-		cfg.Set("redis.addr", "127.0.0.1:6379")
+		cfg.Set("workers.locker.type", "redis")
+		cfg.Set("workers.locker.redis.addr", "127.0.0.1:6379")
 		logger := NewNopLogger()
-		redis, err := clients.NewRedis(cfg)
-		if !assert.NoError(t, err) {
-			t.Fail()
-		}
-
-		lock := lib.NewRedisLocker(redis)
 
 		// Mocking locker behaviour
 		lcs := make([]*fxtest.Lifecycle, 0)
@@ -173,7 +178,12 @@ func TestNewWorkers(t *testing.T) {
 			func(number int) {
 				lc := fxtest.NewLifecycle(t)
 
-				w := NewWorkers(logger, lock, cfg, lc)
+				w, err := NewWorkers(WorkersOptions{
+					Logger: logger,
+					Config: cfg,
+					LC:     lc,
+				})
+				require.NoError(t, err)
 				w.Add(Job{
 					Name: "exclusive_job",
 					Handler: func() {

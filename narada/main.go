@@ -6,6 +6,8 @@ import (
 	"github.com/m1ome/narada"
 	"github.com/m1ome/narada/narada/commands"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/urfave/cli"
 )
 
@@ -15,20 +17,24 @@ const (
 )
 
 func main() {
-	// Create narada instance
+	// Creating logger system
+	logger := logrus.New()
+
+	// Creating instance of Narada
 	n := narada.New(ConsoleToolName, ConsoleToolVersion)
 
 	// Creating urfave
-	api := cli.NewApp()
-	api.Name = ConsoleToolName
-	api.Version = ConsoleToolVersion
-	api.Description = "Narada CLI toolsets"
-	api.Author = "Pavel Makarenko <cryfall@gmail.com>"
-
-	api.Commands = []cli.Command{
+	app := cli.NewApp()
+	app.Name = ConsoleToolName
+	app.Version = ConsoleToolVersion
+	app.Description = "Narada CLI toolchain"
+	app.Author = "Pavel Makarenko <cryfall@gmail.com>"
+	app.Commands = []cli.Command{
 		commands.Migrate(n),
 		commands.CreateMigration(n),
 	}
 
-	api.Run(os.Args)
+	if err := app.Run(os.Args); err != nil {
+		logger.Fatalf("error starting: %v", err)
+	}
 }
