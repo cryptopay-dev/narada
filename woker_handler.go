@@ -7,7 +7,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/m1ome/narada/lib"
+	"github.com/cryptopay-dev/narada/lib"
 )
 
 type jobHandler struct {

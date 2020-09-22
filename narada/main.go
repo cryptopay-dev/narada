@@ -3,8 +3,8 @@ package main
 import (
 	"os"
 
-	"github.com/m1ome/narada"
-	"github.com/m1ome/narada/narada/commands"
+	"github.com/cryptopay-dev/narada"
+	"github.com/cryptopay-dev/narada/narada/commands"
 
 	"github.com/sirupsen/logrus"
 

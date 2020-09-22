@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/m1ome/narada/lib"
+	"github.com/cryptopay-dev/narada/lib"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
