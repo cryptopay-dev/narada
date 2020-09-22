@@ -50,31 +50,28 @@ func NewWorkers(opts WorkersOptions) (*Workers, error) {
 	if opts.Locker != nil {
 		locker = opts.Locker
 	} else {
-		config := opts.Config.Sub("workers.locker")
+		config := opts.Config
+		lockerType := config.GetString("workers.type")
+		switch lockerType {
+		case "redis":
+			config.SetDefault("workers.redis.pool_size", 10)
+			config.SetDefault("workers.redis.idle_timeout", time.Second*60)
 
-		if config != nil {
-			lockerType := config.GetString("type")
-			switch lockerType {
-			case "redis":
-				config.SetDefault("redis.pool_size", 10)
-				config.SetDefault("redis.idle_timeout", time.Second*60)
+			client := redis.NewClient(&redis.Options{
+				Addr:        config.GetString("workers.redis.addr"),
+				PoolSize:    config.GetInt("workers.redis.pool_size"),
+				DB:          config.GetInt("workers.redis.db"),
+				IdleTimeout: config.GetDuration("workers.redis.idle_timeout"),
+				Password:    config.GetString("workers.redis.password"),
+			})
 
-				client := redis.NewClient(&redis.Options{
-					Addr:        config.GetString("redis.addr"),
-					PoolSize:    config.GetInt("redis.pool_size"),
-					DB:          config.GetInt("redis.db"),
-					IdleTimeout: config.GetDuration("redis.idle_timeout"),
-					Password:    config.GetString("redis.password"),
-				})
-
-				if err := client.Ping().Err(); err != nil {
-					return nil, errors.Wrap(err, "error connecting to Redis")
-				}
-
-				locker = lib.NewRedisLocker(client)
-			default:
-				return nil, fmt.Errorf("unknown locker type '%s', supported: redis", lockerType)
+			if err := client.Ping().Err(); err != nil {
+				return nil, errors.Wrap(err, "error connecting to Redis")
 			}
+
+			locker = lib.NewRedisLocker(client)
+		default:
+			return nil, fmt.Errorf("unknown locker type '%s', supported: redis", lockerType)
 		}
 	}
 
