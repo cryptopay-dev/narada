@@ -3,7 +3,7 @@ package narada
 import (
 	"context"
 
-	"github.com/m1ome/narada/clients"
+	"github.com/cryptopay-dev/narada/clients"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"

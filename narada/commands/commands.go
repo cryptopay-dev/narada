@@ -3,8 +3,8 @@ package commands
 import (
 	"context"
 
-	"github.com/m1ome/narada"
-	"github.com/m1ome/narada/clients"
+	"github.com/cryptopay-dev/narada"
+	"github.com/cryptopay-dev/narada/clients"
 
 	"github.com/sirupsen/logrus"
 	"go.uber.org/fx"

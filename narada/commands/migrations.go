@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/m1ome/narada"
+	"github.com/cryptopay-dev/narada"
 
 	"github.com/pressly/goose"
 	"github.com/sirupsen/logrus"

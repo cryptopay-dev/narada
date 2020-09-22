@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/m1ome/narada"
+	"github.com/cryptopay-dev/narada"
 	"github.com/sirupsen/logrus"
 )
 

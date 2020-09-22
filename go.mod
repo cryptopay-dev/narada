@@ -1,4 +1,4 @@
-module github.com/m1ome/narada
+module github.com/cryptopay-dev/narada
 
 go 1.12
 

@@ -8,7 +8,7 @@ import (
 
 	"github.com/chapsuk/worker"
 	"github.com/go-redis/redis"
-	"github.com/m1ome/narada/lib"
+	"github.com/cryptopay-dev/narada/lib"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
