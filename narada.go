@@ -56,7 +56,6 @@ func (t *Narada) Start(fn interface{}) {
 		fx.Provide(
 			// Fundamentals
 			NewConfig,
-			NewSentry,
 			NewLogger,
 
 			// Servers handling
@@ -76,6 +75,7 @@ func (t *Narada) Start(fn interface{}) {
 			// Adding servers by default
 			NewMetricsInvoke,
 			NewProfilerInvoke,
+			NewSentryInvoke,
 
 			// Invoke user-defined function
 			fn,

@@ -1,41 +1,64 @@
 package narada
 
 import (
-	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/spf13/viper"
 
-	"github.com/getsentry/raven-go"
+	"github.com/getsentry/sentry-go"
 	"github.com/sirupsen/logrus"
 )
 
+var (
+	sentryLevelMap = map[logrus.Level]sentry.Level{
+		logrus.TraceLevel: sentry.LevelDebug,
+		logrus.DebugLevel: sentry.LevelDebug,
+		logrus.InfoLevel:  sentry.LevelInfo,
+		logrus.WarnLevel:  sentry.LevelWarning,
+		logrus.ErrorLevel: sentry.LevelError,
+		logrus.FatalLevel: sentry.LevelFatal,
+		logrus.PanicLevel: sentry.LevelFatal,
+	}
+)
+
 type LogrusSentryHook struct {
-	client *raven.Client
 }
 
-func NewLogrusSentryHook(client *raven.Client) LogrusSentryHook {
-	return LogrusSentryHook{
-		client: client,
-	}
+func NewLogrusSentryHook() LogrusSentryHook {
+	return LogrusSentryHook{}
 }
 
 func (h LogrusSentryHook) Fire(entry *logrus.Entry) error {
-	var notifyErr error
-	err, ok := entry.Data["error"].(error)
-	if ok {
-		notifyErr = err
-	} else {
-		notifyErr = errors.New(entry.Message)
-	}
-
-	h.client.CaptureError(notifyErr, nil)
+	sentry.CaptureEvent(h.mapEntry(entry))
 
 	return nil
 }
 
 func (h LogrusSentryHook) Levels() []logrus.Level {
 	return []logrus.Level{logrus.ErrorLevel, logrus.FatalLevel, logrus.PanicLevel}
+}
+
+func (h LogrusSentryHook) mapEntry(entry *logrus.Entry) *sentry.Event {
+	event := sentry.NewEvent()
+	event.Message = entry.Message
+	event.Level = sentryLevelMap[entry.Level]
+
+	for k, v := range entry.Data {
+		event.Extra[k] = v
+	}
+
+	if err, ok := entry.Data[logrus.ErrorKey].(error); ok {
+		exception := sentry.Exception{
+			Type:       reflect.TypeOf(err).String(),
+			Value:      err.Error(),
+			Stacktrace: sentry.ExtractStacktrace(err),
+		}
+
+		event.Exception = []sentry.Exception{exception}
+	}
+
+	return event
 }
 
 type LogrusSlackHook struct {
