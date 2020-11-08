@@ -40,12 +40,7 @@ func NewLogger(config *viper.Viper) (*logrus.Logger, error) {
 
 	// Catching errors with Sentry
 	if config.GetBool("logger.catch_errors") {
-		client, err := NewSentry(config)
-		if err != nil {
-			return nil, err
-		}
-
-		hook := NewLogrusSentryHook(client)
+		hook := NewLogrusSentryHook()
 		logger.AddHook(hook)
 	}
 
