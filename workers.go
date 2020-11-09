@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/chapsuk/worker"
-	"github.com/go-redis/redis"
 	"github.com/cryptopay-dev/narada/lib"
+	"github.com/go-redis/redis"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -37,6 +37,7 @@ type (
 		Name             string
 		Handler          func()
 		Period           time.Duration
+		Cron             string
 		Exclusive        bool
 		ExclusiveTimeout time.Duration
 		Immediately      bool
@@ -138,7 +139,15 @@ func (w *Workers) Add(jobs ...Job) {
 
 			// Appending job
 			work := worker.New(jh.Handler())
-			work.ByTimer(j.Period)
+
+			if j.Period != 0 {
+				work.ByTimer(j.Period)
+			}
+
+			if j.Cron != "" {
+				work.ByCronSpec(j.Cron)
+			}
+
 			work.SetImmediately(j.Immediately)
 
 			w.wg.Add(work)
