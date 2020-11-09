@@ -1,36 +1,40 @@
 package clients
 
 import (
+	"context"
 	"time"
 
-	"github.com/go-pg/pg"
+	"github.com/go-pg/pg/v10"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"golang.org/x/net/context"
 )
 
 type dbQueryHook struct {
 	logger *logrus.Entry
 }
 
-func (d dbQueryHook) BeforeQuery(event *pg.QueryEvent) {
-	event.Ctx = context.WithValue(event.Ctx, "start_time", time.Now())
+func (d dbQueryHook) BeforeQuery(ctx context.Context, event *pg.QueryEvent) (context.Context, error) {
+	return context.WithValue(ctx, "start_time", time.Now()), nil
 }
 
-func (d dbQueryHook) AfterQuery(event *pg.QueryEvent) {
-	st, ok := event.Ctx.Value("start_time").(time.Time)
-	if ok {
-		q, err := event.FormattedQuery()
-		if err != nil {
-			d.logger.WithError(err).Error("error getting formatted query")
-			return
-		}
-
-		d.logger.WithFields(logrus.Fields{
-			"query":   q,
-			"elapsed": time.Since(st),
-		})
+func (d dbQueryHook) AfterQuery(ctx context.Context, event *pg.QueryEvent) error {
+	st, ok := ctx.Value("start_time").(time.Time)
+	if !ok {
+		return nil
 	}
+
+	q, err := event.FormattedQuery()
+	if err != nil {
+		d.logger.WithError(err).Error("error getting formatted query")
+		return nil
+	}
+
+	d.logger.WithFields(logrus.Fields{
+		"query":   string(q),
+		"elapsed": time.Since(st),
+	}).Info("query completed")
+
+	return nil
 }
 
 func NewPostgreSQL(config *viper.Viper, logger *logrus.Logger) *pg.DB {
