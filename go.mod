@@ -3,17 +3,19 @@ module github.com/cryptopay-dev/narada
 go 1.12
 
 require (
-	github.com/bsm/redis-lock v8.0.0+incompatible
+	github.com/bsm/redis-lock v8.0.0+incompatible // indirect
+	github.com/bsm/redislock v0.7.0
 	github.com/chapsuk/wait v0.3.1 // indirect
 	github.com/chapsuk/worker v0.4.0
 	github.com/getsentry/sentry-go v0.7.0
 	github.com/go-pg/pg/v10 v10.6.2
-	github.com/go-redis/redis v6.15.2+incompatible
+	github.com/go-redis/redis v6.15.9+incompatible // indirect
+	github.com/go-redis/redis/v8 v8.3.3
 	github.com/lib/pq v1.1.1
 	github.com/pkg/errors v0.8.1
 	github.com/pressly/goose v2.6.0+incompatible
 	github.com/prometheus/client_golang v0.9.2
-	github.com/robfig/cron v1.1.0 // indirect
+	github.com/robfig/cron v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.4.1
 	github.com/spf13/viper v1.3.2
 	github.com/stretchr/testify v1.6.1

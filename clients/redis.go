@@ -1,9 +1,10 @@
 package clients
 
 import (
+	"context"
 	"time"
 
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 	"github.com/spf13/viper"
 )
 
@@ -19,7 +20,7 @@ func NewRedis(config *viper.Viper) (*redis.Client, error) {
 		Password:    config.GetString("redis.password"),
 	})
 
-	if err := client.Ping().Err(); err != nil {
+	if err := client.Ping(context.TODO()).Err(); err != nil {
 		return nil, err
 	}
 

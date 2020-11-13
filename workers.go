@@ -8,7 +8,7 @@ import (
 
 	"github.com/chapsuk/worker"
 	"github.com/cryptopay-dev/narada/lib"
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -66,7 +66,7 @@ func NewWorkers(opts WorkersOptions) (*Workers, error) {
 				Password:    config.GetString("workers.redis.password"),
 			})
 
-			if err := client.Ping().Err(); err != nil {
+			if err := client.Ping(context.TODO()).Err(); err != nil {
 				return nil, errors.Wrap(err, "error connecting to Redis")
 			}
 
