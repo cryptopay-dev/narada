@@ -17,7 +17,7 @@ require (
 	github.com/sirupsen/logrus v1.4.1
 	github.com/spf13/viper v1.3.2
 	github.com/stretchr/testify v1.6.1
-	github.com/urfave/cli v1.20.0
+	github.com/urfave/cli v1.22.5
 	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/dig v1.7.0 // indirect
 	go.uber.org/fx v1.9.0
