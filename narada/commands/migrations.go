@@ -57,8 +57,6 @@ func Migrate(p *narada.Narada) cli.Command {
 				logger.Println("finished migrating")
 				return nil
 			})
-
-			return nil
 		},
 	}
 }
@@ -93,8 +91,6 @@ func CreateMigration(p *narada.Narada) cli.Command {
 				goose.SetLogger(logger)
 				return goose.Run("create", nil, dir, name, t)
 			})
-
-			return nil
 		},
 	}
 }

@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -9,9 +10,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var redisAddr = os.Getenv("REDIS_ADDR")
+
 func TestNewRedisLocker(t *testing.T) {
 	cfg := viper.New()
-	cfg.Set("redis.addr", "127.0.0.1:6379")
+	cfg.Set("redis.addr", redisAddr)
 	redis, err := clients.NewRedis(cfg)
 	if !assert.NoError(t, err) {
 		t.Fail()

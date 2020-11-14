@@ -17,7 +17,7 @@ import (
 func TestNewLogrusSentryHook(t *testing.T) {
 	t.Run("It should work with empty sentry", func(t *testing.T) {
 		t.Run("Sending error", func(t *testing.T) {
-			h := NewLogrusSentryHook(nil)
+			h := NewLogrusSentryHook()
 			err := h.Fire(&logrus.Entry{
 				Data: logrus.Fields{
 					"error": errors.New("some unknown error"),
@@ -29,7 +29,7 @@ func TestNewLogrusSentryHook(t *testing.T) {
 		})
 
 		t.Run("Sending message", func(t *testing.T) {
-			h := NewLogrusSentryHook(nil)
+			h := NewLogrusSentryHook()
 			err := h.Fire(&logrus.Entry{
 				Message: "i am unknown message",
 			})
@@ -40,7 +40,7 @@ func TestNewLogrusSentryHook(t *testing.T) {
 	})
 
 	t.Run("Levels should be only: error, panic, fatal", func(t *testing.T) {
-		h := NewLogrusSentryHook(nil)
+		h := NewLogrusSentryHook()
 		assert.NotNil(t, h)
 		assert.Equal(t, []logrus.Level{logrus.ErrorLevel, logrus.FatalLevel, logrus.PanicLevel}, h.Levels())
 	})

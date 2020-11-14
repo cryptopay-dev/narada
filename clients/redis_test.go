@@ -1,11 +1,14 @@
 package clients
 
 import (
+	"os"
 	"testing"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
+
+var redisAddr = os.Getenv("REDIS_ADDR")
 
 func TestNewRedis(t *testing.T) {
 	if testing.Short() {
@@ -14,7 +17,7 @@ func TestNewRedis(t *testing.T) {
 
 	t.Run("Successful connect", func(t *testing.T) {
 		cfg := viper.New()
-		cfg.Set("redis.addr", "127.0.0.1:6379")
+		cfg.Set("redis.addr", redisAddr)
 
 		r, err := NewRedis(cfg)
 		assert.NoError(t, err)

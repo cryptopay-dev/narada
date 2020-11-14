@@ -2,6 +2,7 @@ package narada
 
 import (
 	"context"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -34,6 +35,8 @@ func (mockedMutex) Lock() (bool, error) {
 func (mockedMutex) Unlock() error {
 	return nil
 }
+
+var redisAddr = os.Getenv("REDIS_ADDR")
 
 func TestNewWorkers(t *testing.T) {
 	t.Run("Basic jobs scheduling", func(t *testing.T) {
@@ -167,8 +170,8 @@ func TestNewWorkers(t *testing.T) {
 		// Creating two worker groups and running them
 		cfg := viper.New()
 		cfg.Set("jobs.first.enabled", true)
-		cfg.Set("workers.locker.type", "redis")
-		cfg.Set("workers.locker.redis.addr", "127.0.0.1:6379")
+		cfg.Set("workers.type", "redis")
+		cfg.Set("workers.redis.addr", redisAddr)
 		logger := NewNopLogger()
 
 		// Mocking locker behaviour
@@ -221,11 +224,13 @@ func TestNewWorkers(t *testing.T) {
 		select {
 		case <-done:
 			for _, lc := range lcs {
-				lc.Stop(context.Background())
+				err := lc.Stop(context.Background())
+				assert.NoError(t, err)
 			}
 		case <-time.After(time.Second):
 			for _, lc := range lcs {
-				lc.Stop(context.Background())
+				err := lc.Stop(context.Background())
+				assert.NoError(t, err)
 			}
 
 			t.Fatalf("timeout exceeded")

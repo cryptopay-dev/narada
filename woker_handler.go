@@ -16,6 +16,7 @@ type jobHandler struct {
 	logger *logrus.Entry
 
 	lock    lib.Mutex
+	refresh *time.Ticker
 	handler func(ctx context.Context)
 }
 
@@ -30,7 +31,7 @@ func newJobHandler(
 		logger: logger.WithField("job_name", job.Name),
 	}
 
-	go jh.refreshExclusiveLock()
+	go jh.refreshExclusiveLock(time.Second * 30)
 
 	jh.handler = func(ctx context.Context) {
 		// Checking if it's exclusive
@@ -73,12 +74,14 @@ func newJobHandler(
 	return jh
 }
 
-func (j *jobHandler) refreshExclusiveLock() {
+func (j *jobHandler) refreshExclusiveLock(frequency time.Duration) {
 	if !j.job.Exclusive {
 		return
 	}
 
-	for range time.Tick(time.Second * 30) {
+	j.refresh = time.NewTicker(frequency)
+
+	for range j.refresh.C {
 		if j.lock == nil {
 			continue
 		}
@@ -94,6 +97,10 @@ func (j *jobHandler) Handler() func(ctx context.Context) {
 }
 
 func (j *jobHandler) ReleaseLocks() error {
+	if j.refresh != nil {
+		j.refresh.Stop()
+	}
+
 	if j.lock != nil {
 		return j.lock.Unlock()
 	}

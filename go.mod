@@ -1,6 +1,6 @@
 module github.com/cryptopay-dev/narada
 
-go 1.12
+go 1.14
 
 require (
 	github.com/bsm/redis-lock v8.0.0+incompatible // indirect
