@@ -16,8 +16,6 @@ require (
 	github.com/spf13/viper v1.7.1
 	github.com/stretchr/testify v1.6.1
 	github.com/urfave/cli v1.22.1
-	go.uber.org/dig v1.7.0 // indirect
-	go.uber.org/fx v1.9.0
-	go.uber.org/goleak v0.10.0 // indirect
+	go.uber.org/fx v1.13.1
 	gopkg.in/h2non/gock.v1 v1.0.14
 )
