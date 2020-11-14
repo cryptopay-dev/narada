@@ -14,7 +14,7 @@ require (
 	github.com/pressly/goose v2.6.0+incompatible
 	github.com/prometheus/client_golang v0.9.2
 	github.com/robfig/cron v1.1.0 // indirect
-	github.com/sirupsen/logrus v1.4.1
+	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/viper v1.3.2
 	github.com/stretchr/testify v1.6.1
 	github.com/urfave/cli v1.20.0
