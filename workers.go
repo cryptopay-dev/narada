@@ -102,8 +102,13 @@ func NewWorkers(opts WorkersOptions) (*Workers, error) {
 
 func (w *Workers) Add(jobs ...Job) {
 	for _, job := range jobs {
-		w.logger.WithField("job", job).Info("adding new job to workers")
 		name := strings.ToLower(job.Name)
+
+		w.logger.WithFields(logrus.Fields{
+			"job_name":   name,
+			"job_period": job.Period,
+			"job_cron":   job.Cron,
+		}).Info("adding new job to workers")
 
 		// Reading configuration
 		if w.config.IsSet(fmt.Sprintf("jobs.%s", name)) {
