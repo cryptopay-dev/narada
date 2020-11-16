@@ -8,7 +8,7 @@ import (
 
 	"github.com/chapsuk/worker"
 	"github.com/cryptopay-dev/narada/lib"
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -45,32 +45,20 @@ type (
 )
 
 func NewWorkers(opts WorkersOptions) (*Workers, error) {
-	// We should create locker if we need to
+	config := opts.Config
 
 	var locker lib.Locker
 	if opts.Locker != nil {
 		locker = opts.Locker
-	} else {
-		config := opts.Config
+	} else if config.IsSet("workers") {
 		lockerType := config.GetString("workers.type")
 		switch lockerType {
 		case "redis":
-			config.SetDefault("workers.redis.pool_size", 10)
-			config.SetDefault("workers.redis.idle_timeout", time.Second*60)
-
-			client := redis.NewClient(&redis.Options{
-				Addr:        config.GetString("workers.redis.addr"),
-				PoolSize:    config.GetInt("workers.redis.pool_size"),
-				DB:          config.GetInt("workers.redis.db"),
-				IdleTimeout: config.GetDuration("workers.redis.idle_timeout"),
-				Password:    config.GetString("workers.redis.password"),
-			})
-
-			if err := client.Ping().Err(); err != nil {
-				return nil, errors.Wrap(err, "error connecting to Redis")
+			l, err := newRedisLocker(config)
+			if err != nil {
+				return nil, err
 			}
-
-			locker = lib.NewRedisLocker(client)
+			locker = l
 		default:
 			return nil, fmt.Errorf("unknown locker type '%s', supported: redis", lockerType)
 		}
@@ -114,8 +102,13 @@ func NewWorkers(opts WorkersOptions) (*Workers, error) {
 
 func (w *Workers) Add(jobs ...Job) {
 	for _, job := range jobs {
-		w.logger.WithField("job", job).Info("adding new job to workers")
 		name := strings.ToLower(job.Name)
+
+		w.logger.WithFields(logrus.Fields{
+			"job_name":   name,
+			"job_period": job.Period,
+			"job_cron":   job.Cron,
+		}).Info("adding new job to workers")
 
 		// Reading configuration
 		if w.config.IsSet(fmt.Sprintf("jobs.%s", name)) {
@@ -156,4 +149,23 @@ func (w *Workers) Add(jobs ...Job) {
 			w.handlers[j.Name] = jh
 		}(job)
 	}
+}
+
+func newRedisLocker(config *viper.Viper) (lib.Locker, error) {
+	config.SetDefault("workers.redis.pool_size", 10)
+	config.SetDefault("workers.redis.idle_timeout", time.Second*60)
+
+	client := redis.NewClient(&redis.Options{
+		Addr:        config.GetString("workers.redis.addr"),
+		PoolSize:    config.GetInt("workers.redis.pool_size"),
+		DB:          config.GetInt("workers.redis.db"),
+		IdleTimeout: config.GetDuration("workers.redis.idle_timeout"),
+		Password:    config.GetString("workers.redis.password"),
+	})
+
+	if err := client.Ping(context.TODO()).Err(); err != nil {
+		return nil, errors.Wrap(err, "error connecting to Redis")
+	}
+
+	return lib.NewRedisLocker(client), nil
 }

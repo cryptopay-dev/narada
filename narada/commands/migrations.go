@@ -11,7 +11,7 @@ import (
 	"github.com/pressly/goose"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 
 	_ "github.com/lib/pq"
 )
@@ -21,11 +21,11 @@ const (
 	DefaultMigrationsType = "sql"
 )
 
-func Migrate(p *narada.Narada) cli.Command {
-	return cli.Command{
+func Migrate(p *narada.Narada) *cli.Command {
+	return &cli.Command{
 		Name: "migrate:up",
 		Flags: []cli.Flag{
-			cli.StringFlag{Name: "dir"},
+			&cli.StringFlag{Name: "dir"},
 		},
 		Action: func(c *cli.Context) error {
 			return Run(context.Background(), func(logger *logrus.Logger, v *viper.Viper) error {
@@ -57,19 +57,17 @@ func Migrate(p *narada.Narada) cli.Command {
 				logger.Println("finished migrating")
 				return nil
 			})
-
-			return nil
 		},
 	}
 }
 
-func CreateMigration(p *narada.Narada) cli.Command {
-	return cli.Command{
+func CreateMigration(p *narada.Narada) *cli.Command {
+	return &cli.Command{
 		Name: "migrate:create",
 		Flags: []cli.Flag{
-			cli.StringFlag{Name: "dir"},
-			cli.StringFlag{Name: "name"},
-			cli.StringFlag{Name: "type"},
+			&cli.StringFlag{Name: "dir"},
+			&cli.StringFlag{Name: "name"},
+			&cli.StringFlag{Name: "type"},
 		},
 		Action: func(c *cli.Context) error {
 			return Run(context.Background(), func(logger *logrus.Logger, v *viper.Viper) error {
@@ -93,8 +91,6 @@ func CreateMigration(p *narada.Narada) cli.Command {
 				goose.SetLogger(logger)
 				return goose.Run("create", nil, dir, name, t)
 			})
-
-			return nil
 		},
 	}
 }

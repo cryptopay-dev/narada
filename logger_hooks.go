@@ -151,7 +151,7 @@ func (h LogrusSlackHook) Fire(entry *logrus.Entry) error {
 
 	c := NewClient(h.url)
 
-	go c.SendMessage(msg)
+	go c.SendMessage(msg) //nolint:errcheck
 
 	return nil
 }

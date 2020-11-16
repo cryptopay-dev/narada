@@ -1,0 +1,23 @@
+name: ci
+on: [pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run golangci-lint
+        uses: actions-contrib/golangci-lint@v1
+  test:
+    runs-on: ubuntu-latest
+    container: golang:1.14-alpine
+    services:
+      redis:
+        image: redis
+    steps:
+      - name: Install common dependencies
+        run: apk add --no-cache gcc libc-dev
+      - uses: actions/checkout@v2
+      - run: go test -v ./...
+        env:
+          REDIS_ADDR: redis:6379

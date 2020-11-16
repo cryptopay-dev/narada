@@ -8,7 +8,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
 const (
@@ -28,8 +28,10 @@ func main() {
 	app.Name = ConsoleToolName
 	app.Version = ConsoleToolVersion
 	app.Description = "Narada CLI toolchain"
-	app.Author = "Pavel Makarenko <cryfall@gmail.com>"
-	app.Commands = []cli.Command{
+	app.Authors = []*cli.Author{
+		&cli.Author{Name: "Pavel Makarenko", Email: "<cryfall@gmail.com>"},
+	}
+	app.Commands = []*cli.Command{
 		commands.Migrate(n),
 		commands.CreateMigration(n),
 	}

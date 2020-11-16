@@ -95,14 +95,4 @@ func TestNewLogger(t *testing.T) {
 		assert.Error(t, err)
 		assert.Nil(t, logger)
 	})
-
-	t.Run("Logger with bad sentry DSN", func(t *testing.T) {
-		cfg := viper.New()
-		cfg.Set("sentry.dsn", "unknown_dsn")
-
-		logger, err := NewLogger(cfg)
-		assert.Error(t, err)
-		assert.Nil(t, logger)
-	})
-
 }

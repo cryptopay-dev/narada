@@ -86,5 +86,8 @@ func (t *Narada) Start(fn interface{}) {
 }
 
 func (t *Narada) Stop() {
-	t.app.Stop(context.Background())
+	err := t.app.Stop(context.Background())
+	if err != nil {
+		t.logger.Fatalf("error stopping: %v", err)
+	}
 }
