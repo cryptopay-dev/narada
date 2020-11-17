@@ -17,5 +17,5 @@ require (
 	github.com/stretchr/testify v1.6.1
 	github.com/urfave/cli/v2 v2.3.0
 	go.uber.org/fx v1.13.1
-	gopkg.in/h2non/gock.v1 v1.0.14
+	gopkg.in/h2non/gock.v1 v1.0.15
 )
