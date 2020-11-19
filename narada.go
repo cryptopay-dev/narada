@@ -46,8 +46,37 @@ func New(name string, version string, providers ...interface{}) *Narada {
 }
 
 func (t *Narada) Start(fn interface{}) {
+	t.app = t.build(
+		fx.Invoke(
+			// Adding servers by default
+			NewMetricsInvoke,
+			NewProfilerInvoke,
+			NewSentryInvoke,
+
+			// Invoke user-defined function
+			fn,
+		),
+	)
+
+	t.app.Run()
+}
+
+func (t *Narada) Stop() {
+	err := t.app.Stop(context.Background())
+	if err != nil {
+		t.logger.Fatalf("error stopping: %v", err)
+	}
+}
+
+func (t *Narada) Invoke(fn interface{}) {
+	t.build(
+		fx.Invoke(fn),
+	)
+}
+
+func (t *Narada) build(opts ...fx.Option) *fx.App {
 	// Creating application
-	t.app = fx.New(
+	opts = append(opts,
 		// Setting default logger to discard
 		fx.Logger(NewNopLogger()),
 
@@ -70,24 +99,7 @@ func (t *Narada) Start(fn interface{}) {
 		),
 
 		fx.Provide(t.providers...),
-
-		fx.Invoke(
-			// Adding servers by default
-			NewMetricsInvoke,
-			NewProfilerInvoke,
-			NewSentryInvoke,
-
-			// Invoke user-defined function
-			fn,
-		),
 	)
 
-	t.app.Run()
-}
-
-func (t *Narada) Stop() {
-	err := t.app.Stop(context.Background())
-	if err != nil {
-		t.logger.Fatalf("error stopping: %v", err)
-	}
+	return fx.New(opts...)
 }

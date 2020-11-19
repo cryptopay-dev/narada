@@ -104,12 +104,6 @@ func (w *Workers) Add(jobs ...Job) {
 	for _, job := range jobs {
 		name := strings.ToLower(job.Name)
 
-		w.logger.WithFields(logrus.Fields{
-			"job_name":   name,
-			"job_period": job.Period,
-			"job_cron":   job.Cron,
-		}).Info("adding new job to workers")
-
 		// Reading configuration
 		if w.config.IsSet(fmt.Sprintf("jobs.%s", name)) {
 			enabledKey := fmt.Sprintf("jobs.%s.enabled", name)
@@ -125,6 +119,12 @@ func (w *Workers) Add(jobs ...Job) {
 
 			job.Period = w.config.GetDuration(periodKey)
 		}
+
+		w.logger.WithFields(logrus.Fields{
+			"job_name":   name,
+			"job_period": job.Period,
+			"job_cron":   job.Cron,
+		}).Info("adding new job to workers")
 
 		func(j Job) {
 			// Creating handler
