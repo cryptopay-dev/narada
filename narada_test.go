@@ -5,6 +5,9 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNew(t *testing.T) {
@@ -52,5 +55,16 @@ func TestNew(t *testing.T) {
 			t.Fatalf("timeout exceeded")
 		}
 
+	})
+
+	t.Run("It allows to invoke one-shot tasks", func(t *testing.T) {
+		value := 1
+
+		app.Invoke(func(l *logrus.Logger) {
+			l.Info("Changing value to 42")
+			value = 42
+		})
+
+		assert.Equal(t, 42, value)
 	})
 }
