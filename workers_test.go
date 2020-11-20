@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cryptopay-dev/narada/lock"
+	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/require"
-
-	"github.com/cryptopay-dev/narada/lib"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -21,7 +21,7 @@ import (
 //
 type mockedLocker struct{}
 
-func (mockedLocker) Obtain(name string, expire time.Duration) lib.Mutex {
+func (mockedLocker) Obtain(name string, expire time.Duration) lock.Mutex {
 	return &mockedMutex{}
 }
 
@@ -170,8 +170,6 @@ func TestNewWorkers(t *testing.T) {
 		// Creating two worker groups and running them
 		cfg := viper.New()
 		cfg.Set("jobs.first.enabled", true)
-		cfg.Set("workers.type", "redis")
-		cfg.Set("workers.redis.addr", redisAddr)
 		logger := NewNopLogger()
 
 		// Mocking locker behaviour
@@ -184,7 +182,10 @@ func TestNewWorkers(t *testing.T) {
 				w, err := NewWorkers(WorkersOptions{
 					Logger: logger,
 					Config: cfg,
-					LC:     lc,
+					Locker: lock.NewRedis(redis.NewClient(&redis.Options{
+						Addr: redisAddr,
+					})),
+					LC: lc,
 				})
 				require.NoError(t, err)
 				w.Add(Job{

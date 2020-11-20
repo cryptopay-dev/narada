@@ -7,22 +7,22 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/cryptopay-dev/narada/lib"
+	"github.com/cryptopay-dev/narada/lock"
 )
 
 type jobHandler struct {
 	job    Job
-	locker lib.Locker
+	locker lock.Locker
 	logger *logrus.Entry
 
-	lock    lib.Mutex
+	lock    lock.Mutex
 	refresh *time.Ticker
 	handler func(ctx context.Context)
 }
 
 func newJobHandler(
 	job Job,
-	locker lib.Locker,
+	locker lock.Locker,
 	logger *logrus.Entry,
 ) *jobHandler {
 	jh := &jobHandler{
@@ -38,7 +38,7 @@ func newJobHandler(
 		if job.Exclusive {
 			lockKey := strings.Join([]string{Prefix, "workers", job.Name, "exclusive"}, ":")
 
-			var mutex lib.Mutex
+			var mutex lock.Mutex
 			if jh.lock == nil {
 				mutex = locker.Obtain(lockKey, time.Minute)
 			} else {

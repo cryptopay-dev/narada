@@ -1,4 +1,4 @@
-package lib
+package lock
 
 import (
 	"context"
@@ -10,20 +10,11 @@ import (
 )
 
 type (
-	Locker interface {
-		Obtain(name string, expire time.Duration) Mutex
-	}
-
-	Mutex interface {
-		Lock() (bool, error)
-		Unlock() error
-	}
-
-	RedisLock struct {
+	RedisLocker struct {
 		locker *redislock.Client
 	}
 
-	mutex struct {
+	redisMutex struct {
 		locker *redislock.Client
 		lock   *redislock.Lock
 		name   string
@@ -37,25 +28,23 @@ var (
 	lopts = &redislock.Options{
 		RetryStrategy: redislock.LimitRetry(redislock.LinearBackoff(time.Millisecond*100), 3),
 	}
-
-	errLockNotHeld = errors.New("lock: lock not held")
 )
 
-func NewRedisLocker(redis *redis.Client) Locker {
-	return &RedisLock{
+func NewRedis(redis *redis.Client) Locker {
+	return &RedisLocker{
 		locker: redislock.New(redis),
 	}
 }
 
-func (rl *RedisLock) Obtain(name string, expire time.Duration) Mutex {
-	return &mutex{
+func (rl *RedisLocker) Obtain(name string, expire time.Duration) Mutex {
+	return &redisMutex{
 		locker: rl.locker,
 		name:   name,
 		expire: expire,
 	}
 }
 
-func (mu *mutex) Lock() (bool, error) {
+func (mu *redisMutex) Lock() (bool, error) {
 	if mu.lock != nil {
 		if err := mu.lock.Refresh(ctx, mu.expire, lopts); err != nil {
 			return false, errors.Wrap(err, "refresh lock")
@@ -76,7 +65,7 @@ func (mu *mutex) Lock() (bool, error) {
 	return true, nil
 }
 
-func (mu *mutex) Unlock() error {
+func (mu *redisMutex) Unlock() error {
 	if mu.lock == nil {
 		return errLockNotHeld
 	}
