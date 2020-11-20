@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/cryptopay-dev/narada/clients"
+	"github.com/cryptopay-dev/narada/lock"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
@@ -91,6 +92,7 @@ func (t *Narada) build(opts ...fx.Option) *fx.App {
 			NewMultiServers,
 
 			// Workers handling
+			lock.NewRedis,
 			NewWorkers,
 
 			// Clients

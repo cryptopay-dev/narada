@@ -1,4 +1,4 @@
-package lib
+package lock
 
 import (
 	"os"
@@ -20,7 +20,7 @@ func TestNewRedisLocker(t *testing.T) {
 		t.Fail()
 	}
 
-	locker := NewRedisLocker(redis)
+	locker := NewRedis(redis)
 	assert.NotNil(t, locker)
 
 	mutex := locker.Obtain("test", time.Second)

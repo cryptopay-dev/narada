@@ -7,9 +7,7 @@ import (
 	"time"
 
 	"github.com/chapsuk/worker"
-	"github.com/cryptopay-dev/narada/lib"
-	"github.com/go-redis/redis/v8"
-	"github.com/pkg/errors"
+	"github.com/cryptopay-dev/narada/lock"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
@@ -17,7 +15,7 @@ import (
 
 type (
 	Workers struct {
-		locker   lib.Locker
+		locker   lock.Locker
 		logger   *logrus.Entry
 		config   *viper.Viper
 		handlers map[string]*jobHandler
@@ -29,7 +27,7 @@ type (
 
 		Logger *logrus.Logger
 		Config *viper.Viper
-		Locker lib.Locker `optional:"true"`
+		Locker lock.Locker
 		LC     fx.Lifecycle
 	}
 
@@ -45,29 +43,10 @@ type (
 )
 
 func NewWorkers(opts WorkersOptions) (*Workers, error) {
-	config := opts.Config
-
-	var locker lib.Locker
-	if opts.Locker != nil {
-		locker = opts.Locker
-	} else if config.IsSet("workers") {
-		lockerType := config.GetString("workers.type")
-		switch lockerType {
-		case "redis":
-			l, err := newRedisLocker(config)
-			if err != nil {
-				return nil, err
-			}
-			locker = l
-		default:
-			return nil, fmt.Errorf("unknown locker type '%s', supported: redis", lockerType)
-		}
-	}
-
 	w := &Workers{
 		wg:       worker.NewGroup(),
 		logger:   opts.Logger.WithField("module", "workers"),
-		locker:   locker,
+		locker:   opts.Locker,
 		config:   opts.Config,
 		handlers: make(map[string]*jobHandler),
 	}
@@ -149,23 +128,4 @@ func (w *Workers) Add(jobs ...Job) {
 			w.handlers[j.Name] = jh
 		}(job)
 	}
-}
-
-func newRedisLocker(config *viper.Viper) (lib.Locker, error) {
-	config.SetDefault("workers.redis.pool_size", 10)
-	config.SetDefault("workers.redis.idle_timeout", time.Second*60)
-
-	client := redis.NewClient(&redis.Options{
-		Addr:        config.GetString("workers.redis.addr"),
-		PoolSize:    config.GetInt("workers.redis.pool_size"),
-		DB:          config.GetInt("workers.redis.db"),
-		IdleTimeout: config.GetDuration("workers.redis.idle_timeout"),
-		Password:    config.GetString("workers.redis.password"),
-	})
-
-	if err := client.Ping(context.TODO()).Err(); err != nil {
-		return nil, errors.Wrap(err, "error connecting to Redis")
-	}
-
-	return lib.NewRedisLocker(client), nil
 }
