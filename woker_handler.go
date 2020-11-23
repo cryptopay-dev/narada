@@ -31,7 +31,11 @@ func newJobHandler(
 		logger: logger.WithField("job_name", job.Name),
 	}
 
-	go jh.refreshExclusiveLock(time.Second * 30)
+	if job.Exclusive {
+		jh.refresh = time.NewTicker(time.Second * 30)
+
+		go jh.refreshExclusiveLock()
+	}
 
 	jh.handler = func(ctx context.Context) {
 		// Checking if it's exclusive
@@ -74,13 +78,7 @@ func newJobHandler(
 	return jh
 }
 
-func (j *jobHandler) refreshExclusiveLock(frequency time.Duration) {
-	if !j.job.Exclusive {
-		return
-	}
-
-	j.refresh = time.NewTicker(frequency)
-
+func (j *jobHandler) refreshExclusiveLock() {
 	for range j.refresh.C {
 		if j.lock == nil {
 			continue
