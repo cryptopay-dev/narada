@@ -1,8 +1,8 @@
 package narada
 
 import (
+	"errors"
 	"fmt"
-	"reflect"
 
 	"github.com/spf13/viper"
 
@@ -30,7 +30,12 @@ func NewLogrusSentryHook() LogrusSentryHook {
 }
 
 func (h LogrusSentryHook) Fire(entry *logrus.Entry) error {
-	sentry.CaptureEvent(h.mapEntry(entry))
+	sentry.WithScope(func(scope *sentry.Scope) {
+		scope.SetLevel(sentryLevelMap[entry.Level])
+		scope.SetExtras(entry.Data)
+
+		sentry.CaptureException(h.extractError(entry))
+	})
 
 	return nil
 }
@@ -39,26 +44,12 @@ func (h LogrusSentryHook) Levels() []logrus.Level {
 	return []logrus.Level{logrus.ErrorLevel, logrus.FatalLevel, logrus.PanicLevel}
 }
 
-func (h LogrusSentryHook) mapEntry(entry *logrus.Entry) *sentry.Event {
-	event := sentry.NewEvent()
-	event.Message = entry.Message
-	event.Level = sentryLevelMap[entry.Level]
-
-	for k, v := range entry.Data {
-		event.Extra[k] = v
-	}
-
+func (h LogrusSentryHook) extractError(entry *logrus.Entry) error {
 	if err, ok := entry.Data[logrus.ErrorKey].(error); ok {
-		exception := sentry.Exception{
-			Type:       reflect.TypeOf(err).String(),
-			Value:      err.Error(),
-			Stacktrace: sentry.ExtractStacktrace(err),
-		}
-
-		event.Exception = []sentry.Exception{exception}
+		return err
 	}
 
-	return event
+	return errors.New(entry.Message)
 }
 
 type LogrusSlackHook struct {
