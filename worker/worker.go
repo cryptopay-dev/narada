@@ -1,4 +1,4 @@
-package narada
+package worker
 
 import (
 	"context"
@@ -18,11 +18,11 @@ type (
 		locker   lock.Locker
 		logger   *logrus.Entry
 		config   *viper.Viper
-		handlers map[string]*jobHandler
+		handlers map[string]*handler
 		wg       *worker.Group
 	}
 
-	WorkersOptions struct {
+	Options struct {
 		fx.In
 
 		Logger *logrus.Logger
@@ -42,13 +42,13 @@ type (
 	}
 )
 
-func NewWorkers(opts WorkersOptions) (*Workers, error) {
+func New(opts Options) (*Workers, error) {
 	w := &Workers{
 		wg:       worker.NewGroup(),
 		logger:   opts.Logger.WithField("module", "workers"),
 		locker:   opts.Locker,
 		config:   opts.Config,
-		handlers: make(map[string]*jobHandler),
+		handlers: make(map[string]*handler),
 	}
 
 	opts.LC.Append(fx.Hook{
@@ -107,7 +107,7 @@ func (w *Workers) Add(jobs ...Job) {
 
 		func(j Job) {
 			// Creating handler
-			jh := newJobHandler(job, w.locker, w.logger)
+			jh := newHandler(job, w.locker, w.logger)
 
 			// Appending job
 			work := worker.New(jh.Handler())

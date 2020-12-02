@@ -5,6 +5,7 @@ import (
 
 	"github.com/cryptopay-dev/narada/clients"
 	"github.com/cryptopay-dev/narada/lock"
+	"github.com/cryptopay-dev/narada/worker"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
@@ -93,7 +94,7 @@ func (t *Narada) build(opts ...fx.Option) *fx.App {
 
 			// Workers handling
 			lock.NewRedis,
-			NewWorkers,
+			worker.NewWorkers,
 
 			// Clients
 			clients.NewPostgreSQL,
