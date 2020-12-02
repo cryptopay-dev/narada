@@ -1,4 +1,4 @@
-package narada
+package worker
 
 import (
 	"context"
@@ -10,7 +10,9 @@ import (
 	"github.com/cryptopay-dev/narada/lock"
 )
 
-type jobHandler struct {
+const Prefix = "narada"
+
+type handler struct {
 	job    Job
 	locker lock.Locker
 	logger *logrus.Entry
@@ -20,12 +22,12 @@ type jobHandler struct {
 	handler func(ctx context.Context)
 }
 
-func newJobHandler(
+func newHandler(
 	job Job,
 	locker lock.Locker,
 	logger *logrus.Entry,
-) *jobHandler {
-	jh := &jobHandler{
+) *handler {
+	jh := &handler{
 		job:    job,
 		locker: locker,
 		logger: logger.WithField("job_name", job.Name),
@@ -63,9 +65,14 @@ func newJobHandler(
 			jh.lock = mutex
 		}
 
-		jh.logger.Infof("job started")
+		jh.logger.Debug("job started")
 		defer func(start time.Time) {
-			jh.logger.WithField("duration", time.Since(start).Seconds()).Infof("job finished")
+			d := time.Since(start).Seconds()
+
+			jh.logger.WithField("duration", d).Debug("job finished")
+			workerSummary.
+				WithLabelValues(job.Name).
+				Observe(d)
 		}(time.Now())
 
 		job.Handler()
@@ -74,7 +81,7 @@ func newJobHandler(
 	return jh
 }
 
-func (j *jobHandler) refreshExclusiveLock(frequency time.Duration) {
+func (j *handler) refreshExclusiveLock(frequency time.Duration) {
 	if !j.job.Exclusive {
 		return
 	}
@@ -92,11 +99,11 @@ func (j *jobHandler) refreshExclusiveLock(frequency time.Duration) {
 	}
 }
 
-func (j *jobHandler) Handler() func(ctx context.Context) {
+func (j *handler) Handler() func(ctx context.Context) {
 	return j.handler
 }
 
-func (j *jobHandler) ReleaseLocks() error {
+func (j *handler) ReleaseLocks() error {
 	if j.refresh != nil {
 		j.refresh.Stop()
 	}

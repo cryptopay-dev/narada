@@ -7,10 +7,11 @@ import (
 	"time"
 
 	"github.com/cryptopay-dev/narada"
+	"github.com/cryptopay-dev/narada/worker"
 	"github.com/sirupsen/logrus"
 )
 
-func Run(ms *narada.Multiserver, workers *narada.Workers, logger *logrus.Logger) error {
+func Run(ms *narada.Multiserver, workers *worker.Workers, logger *logrus.Logger) error {
 	// Atomic counter
 	var counter uint64
 
@@ -29,7 +30,7 @@ func Run(ms *narada.Multiserver, workers *narada.Workers, logger *logrus.Logger)
 	}
 
 	// Adding workers
-	job := narada.Job{
+	job := worker.Job{
 		Name: "counter",
 		Handler: func() {
 			atomic.AddUint64(&counter, 1)

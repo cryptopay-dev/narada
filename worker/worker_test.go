@@ -1,7 +1,8 @@
-package narada
+package worker
 
 import (
 	"context"
+	"io/ioutil"
 	"os"
 	"sync"
 	"testing"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/cryptopay-dev/narada/lock"
 	"github.com/go-redis/redis/v8"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/spf13/viper"
@@ -40,12 +42,12 @@ var redisAddr = os.Getenv("REDIS_ADDR")
 
 func TestNewWorkers(t *testing.T) {
 	t.Run("Basic jobs scheduling", func(t *testing.T) {
-		logger := NewNopLogger()
+		logger := newNopLogger()
 		cfg := viper.New()
 		lc := fxtest.NewLifecycle(t)
 		lock := &mockedLocker{}
 
-		w, err := NewWorkers(WorkersOptions{
+		w, err := New(Options{
 			Logger: logger,
 			Config: cfg,
 			LC:     lc,
@@ -170,7 +172,7 @@ func TestNewWorkers(t *testing.T) {
 		// Creating two worker groups and running them
 		cfg := viper.New()
 		cfg.Set("jobs.first.enabled", true)
-		logger := NewNopLogger()
+		logger := newNopLogger()
 
 		// Mocking locker behaviour
 		lcs := make([]*fxtest.Lifecycle, 0)
@@ -179,7 +181,7 @@ func TestNewWorkers(t *testing.T) {
 			func(number int) {
 				lc := fxtest.NewLifecycle(t)
 
-				w, err := NewWorkers(WorkersOptions{
+				w, err := New(Options{
 					Logger: logger,
 					Config: cfg,
 					Locker: lock.NewRedis(redis.NewClient(&redis.Options{
@@ -247,4 +249,11 @@ func TestNewWorkers(t *testing.T) {
 
 		assert.Equal(t, 1, len(fCounters))
 	})
+}
+
+func newNopLogger() *logrus.Logger {
+	logger := logrus.New()
+	logger.Out = ioutil.Discard
+
+	return logger
 }
