@@ -67,7 +67,12 @@ func newHandler(
 
 		jh.logger.Debug("job started")
 		defer func(start time.Time) {
-			jh.logger.WithField("duration", time.Since(start).Seconds()).Debug("job finished")
+			d := time.Since(start).Seconds()
+
+			jh.logger.WithField("duration", d).Debug("job finished")
+			workerSummary.
+				WithLabelValues(job.Name).
+				Observe(d)
 		}(time.Now())
 
 		job.Handler()

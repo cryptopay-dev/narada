@@ -94,7 +94,7 @@ func (t *Narada) build(opts ...fx.Option) *fx.App {
 
 			// Workers handling
 			lock.NewRedis,
-			worker.NewWorkers,
+			worker.New,
 
 			// Clients
 			clients.NewPostgreSQL,
