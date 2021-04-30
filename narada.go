@@ -86,8 +86,8 @@ func (t *Narada) build(opts ...fx.Option) *fx.App {
 
 		fx.Provide(
 			// Fundamentals
-			NewConfig,
-			NewLogger,
+			func() *logrus.Logger { return t.logger },
+			func() *viper.Viper { return t.config },
 
 			// Servers handling
 			NewMultiServers,
