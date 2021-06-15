@@ -3,7 +3,7 @@ module github.com/cryptopay-dev/narada
 go 1.14
 
 require (
-	github.com/bsm/redislock v0.7.0
+	github.com/bsm/redislock v0.7.1
 	github.com/chapsuk/worker v1.0.0
 	github.com/getsentry/sentry-go v0.9.0
 	github.com/go-pg/pg/v10 v10.6.2
