@@ -32,7 +32,8 @@ func main() {
 		&cli.Author{Name: "Pavel Makarenko", Email: "<cryfall@gmail.com>"},
 	}
 	app.Commands = []*cli.Command{
-		commands.Migrate(n),
+		commands.MigrateUp(n),
+		commands.MigrateDown(n),
 		commands.CreateMigration(n),
 	}
 
