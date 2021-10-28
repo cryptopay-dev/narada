@@ -21,36 +21,24 @@ const (
 	DefaultMigrationsType = "sql"
 )
 
-func Migrate(p *narada.Narada) *cli.Command {
+func MigrateUp(p *narada.Narada) *cli.Command {
 	return &cli.Command{
 		Name: "migrate:up",
 		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "dir"},
+			&cli.StringFlag{Name: "dir", Value: DefaultMigrationsDir},
 		},
 		Action: func(c *cli.Context) error {
 			return Run(context.Background(), func(logger *logrus.Logger, v *viper.Viper) error {
 				logger.Println("starting migrations")
 				dir := c.String("dir")
 
-				if dir == "" {
-					dir = DefaultMigrationsDir
-				}
-
-				conn := fmt.Sprintf(
-					"postgres://%s:%s@%s/%s?sslmode=disable",
-					v.GetString("database.user"),
-					v.GetString("database.password"),
-					v.GetString("database.addr"),
-					v.GetString("database.database"),
-				)
-
-				db, err := sql.Open("postgres", conn)
+				db, err := connect(v)
 				if err != nil {
 					return err
 				}
 
 				goose.SetLogger(logger)
-				if err := goose.Run("up", db, dir); err != nil {
+				if err := goose.Up(db, dir); err != nil {
 					return err
 				}
 
@@ -61,13 +49,41 @@ func Migrate(p *narada.Narada) *cli.Command {
 	}
 }
 
+func MigrateDown(p *narada.Narada) *cli.Command {
+	return &cli.Command{
+		Name: "migrate:down",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "dir", Value: DefaultMigrationsDir},
+		},
+		Action: func(c *cli.Context) error {
+			return Run(context.Background(), func(logger *logrus.Logger, v *viper.Viper) error {
+				logger.Println("rolling back migration")
+				dir := c.String("dir")
+
+				db, err := connect(v)
+				if err != nil {
+					return err
+				}
+
+				goose.SetLogger(logger)
+				if err := goose.Down(db, dir); err != nil {
+					return err
+				}
+
+				logger.Println("finished rollback")
+				return nil
+			})
+		},
+	}
+}
+
 func CreateMigration(p *narada.Narada) *cli.Command {
 	return &cli.Command{
 		Name: "migrate:create",
 		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "dir"},
 			&cli.StringFlag{Name: "name"},
-			&cli.StringFlag{Name: "type"},
+			&cli.StringFlag{Name: "dir", Value: DefaultMigrationsDir},
+			&cli.StringFlag{Name: "type", Value: DefaultMigrationsType},
 		},
 		Action: func(c *cli.Context) error {
 			return Run(context.Background(), func(logger *logrus.Logger, v *viper.Viper) error {
@@ -79,18 +95,22 @@ func CreateMigration(p *narada.Narada) *cli.Command {
 					return errors.New("name cannot be empty")
 				}
 
-				if dir == "" {
-					dir = DefaultMigrationsDir
-				}
-
-				if t == "" {
-					t = DefaultMigrationsType
-				}
-
 				logger.Printf("creating sql migration: %s", name)
 				goose.SetLogger(logger)
-				return goose.Run("create", nil, dir, name, t)
+				return goose.Create(nil, dir, name, t)
 			})
 		},
 	}
+}
+
+func connect(v *viper.Viper) (*sql.DB, error) {
+	dsn := fmt.Sprintf(
+		"postgres://%s:%s@%s/%s?sslmode=disable",
+		v.GetString("database.user"),
+		v.GetString("database.password"),
+		v.GetString("database.addr"),
+		v.GetString("database.database"),
+	)
+
+	return sql.Open("postgres", dsn)
 }
