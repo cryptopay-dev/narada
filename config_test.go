@@ -8,6 +8,20 @@ import (
 )
 
 func TestNewConfig(t *testing.T) {
+	t.Run("Respecting empty config with env overhaul", func(t *testing.T) {
+		t.Run("Loading empty config and override env", func(t *testing.T) {
+			os.Setenv("NARADA_CONFIG", "./fixtures/empty_config.yml")
+			os.Setenv("RANDOM_VALUE", "i_am_fixture")
+			defer os.Clearenv()
+
+			cfg, err := NewConfig()
+			assert.NotNil(t, cfg)
+			assert.NoError(t, err)
+
+			assert.Equal(t, "i_am_fixture", cfg.GetString("random_value"))
+		})
+	})
+
 	t.Run("Loading configuration", func(t *testing.T) {
 		t.Run("Failure on default config", func(t *testing.T) {
 			cfg, err := NewConfig()
