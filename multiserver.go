@@ -12,7 +12,7 @@ import (
 
 type (
 	Multiserver struct {
-		servers map[string]*server
+		servers map[string]*http.Server
 		logger  *logrus.Logger
 		config  *viper.Viper
 	}
@@ -29,18 +29,9 @@ func (ms *Multiserver) Add(name string, handler http.Handler) error {
 		return fmt.Errorf("error adding server, duplicate key: %s", name)
 	}
 
-	srv := &server{
-		s: &http.Server{
-			Addr:    addr,
-			Handler: handler,
-		},
-	}
-
-	if ms.config.IsSet("tls." + name) {
-		srv.tls = &tlsConfig{
-			certFile: ms.config.GetString("tls." + name + ".cert_file"),
-			keyFile:  ms.config.GetString("tls." + name + ".key_file"),
-		}
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: handler,
 	}
 
 	ms.servers[name] = srv
@@ -49,7 +40,7 @@ func (ms *Multiserver) Add(name string, handler http.Handler) error {
 }
 
 func NewMultiServers(config *viper.Viper, logger *logrus.Logger, lc fx.Lifecycle) (*Multiserver, error) {
-	servers := make(map[string]*server)
+	servers := make(map[string]*http.Server)
 
 	// Default bindings for metrics & pprof
 	config.SetDefault("bind.pprof", ":9001")
@@ -66,9 +57,9 @@ func NewMultiServers(config *viper.Viper, logger *logrus.Logger, lc fx.Lifecycle
 			for name, s := range ms.servers {
 				ms.logger.WithFields(logrus.Fields{
 					"server_name": name,
-					"address":     s.s.Addr,
+					"address":     s.Addr,
 				}).Info("starting server")
-				go func(name string, s *server) {
+				go func(name string, s *http.Server) {
 					if err := s.ListenAndServe(); err != nil {
 						if err == http.ErrServerClosed {
 							return
@@ -101,28 +92,4 @@ func NewMultiServers(config *viper.Viper, logger *logrus.Logger, lc fx.Lifecycle
 	})
 
 	return ms, nil
-}
-
-type (
-	server struct {
-		s   *http.Server
-		tls *tlsConfig
-	}
-
-	tlsConfig struct {
-		certFile string
-		keyFile  string
-	}
-)
-
-func (s *server) ListenAndServe() error {
-	if s.tls != nil {
-		return s.s.ListenAndServeTLS(s.tls.certFile, s.tls.keyFile)
-	}
-
-	return s.s.ListenAndServe()
-}
-
-func (s *server) Shutdown(ctx context.Context) error {
-	return s.s.Shutdown(ctx)
 }
