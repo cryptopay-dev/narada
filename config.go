@@ -9,8 +9,9 @@ import (
 
 // NewConfig creates a new configuration, by default config file will be `config.yml` in same directory you run application
 // if you want to override it you should provide `NARADA_CONFIG` environment variable.
-func NewConfig() (*viper.Viper, error) {
+func NewConfig(prefix string) (*viper.Viper, error) {
 	v := viper.New()
+	v.SetEnvPrefix(prefix)
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 	v.SetConfigType("yaml")

@@ -21,7 +21,10 @@ func main() {
 	logger := logrus.New()
 
 	// Creating instance of Narada
-	n := narada.New(ConsoleToolName, ConsoleToolVersion)
+	n := narada.New(narada.Options{
+		Name:    ConsoleToolName,
+		Version: ConsoleToolVersion,
+	})
 
 	// Creating urfave
 	app := cli.NewApp()

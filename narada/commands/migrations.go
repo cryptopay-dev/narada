@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -28,7 +27,7 @@ func MigrateUp(p *narada.Narada) *cli.Command {
 			&cli.StringFlag{Name: "dir", Value: DefaultMigrationsDir},
 		},
 		Action: func(c *cli.Context) error {
-			return Run(context.Background(), func(logger *logrus.Logger, v *viper.Viper) error {
+			p.Invoke(func(logger *logrus.Logger, v *viper.Viper) error {
 				logger.Println("starting migrations")
 				dir := c.String("dir")
 
@@ -45,6 +44,8 @@ func MigrateUp(p *narada.Narada) *cli.Command {
 				logger.Println("finished migrating")
 				return nil
 			})
+
+			return nil
 		},
 	}
 }
@@ -56,7 +57,7 @@ func MigrateDown(p *narada.Narada) *cli.Command {
 			&cli.StringFlag{Name: "dir", Value: DefaultMigrationsDir},
 		},
 		Action: func(c *cli.Context) error {
-			return Run(context.Background(), func(logger *logrus.Logger, v *viper.Viper) error {
+			p.Invoke(func(logger *logrus.Logger, v *viper.Viper) error {
 				logger.Println("rolling back migration")
 				dir := c.String("dir")
 
@@ -73,6 +74,8 @@ func MigrateDown(p *narada.Narada) *cli.Command {
 				logger.Println("finished rollback")
 				return nil
 			})
+
+			return nil
 		},
 	}
 }
@@ -86,7 +89,7 @@ func CreateMigration(p *narada.Narada) *cli.Command {
 			&cli.StringFlag{Name: "type", Value: DefaultMigrationsType},
 		},
 		Action: func(c *cli.Context) error {
-			return Run(context.Background(), func(logger *logrus.Logger, v *viper.Viper) error {
+			p.Invoke(func(logger *logrus.Logger, v *viper.Viper) error {
 				name := c.String("name")
 				dir := c.String("dir")
 				t := c.String("type")
@@ -99,6 +102,8 @@ func CreateMigration(p *narada.Narada) *cli.Command {
 				goose.SetLogger(logger)
 				return goose.Create(nil, dir, name, t)
 			})
+
+			return nil
 		},
 	}
 }
