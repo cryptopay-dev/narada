@@ -14,7 +14,7 @@ func TestNewConfig(t *testing.T) {
 			os.Setenv("RANDOM_VALUE", "i_am_fixture")
 			defer os.Clearenv()
 
-			cfg, err := NewConfig()
+			cfg, err := NewConfig("")
 			assert.NotNil(t, cfg)
 			assert.NoError(t, err)
 
@@ -24,7 +24,7 @@ func TestNewConfig(t *testing.T) {
 
 	t.Run("Loading configuration", func(t *testing.T) {
 		t.Run("Failure on default config", func(t *testing.T) {
-			cfg, err := NewConfig()
+			cfg, err := NewConfig("")
 			assert.Nil(t, cfg)
 			assert.Error(t, err)
 		})
@@ -33,7 +33,7 @@ func TestNewConfig(t *testing.T) {
 			os.Setenv("NARADA_CONFIG", "./fixtures/config.yml")
 			defer os.Clearenv()
 
-			cfg, err := NewConfig()
+			cfg, err := NewConfig("")
 			assert.NotNil(t, cfg)
 			assert.NoError(t, err)
 
@@ -46,7 +46,19 @@ func TestNewConfig(t *testing.T) {
 		os.Setenv("BIND_API", ":8090")
 		defer os.Clearenv()
 
-		cfg, err := NewConfig()
+		cfg, err := NewConfig("")
+		assert.NotNil(t, cfg)
+		assert.NoError(t, err)
+
+		assert.Equal(t, ":8090", cfg.GetString("bind.api"))
+	})
+
+	t.Run("Override configuration from env with prefix", func(t *testing.T) {
+		os.Setenv("NARADA_CONFIG", "./fixtures/config.yml")
+		os.Setenv("TEST_BIND_API", ":8090")
+		defer os.Clearenv()
+
+		cfg, err := NewConfig("test")
 		assert.NotNil(t, cfg)
 		assert.NoError(t, err)
 

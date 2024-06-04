@@ -18,21 +18,27 @@ type (
 		config    *viper.Viper
 		app       *fx.App
 	}
+
+	Options struct {
+		Name      string
+		Version   string
+		EnvPrefix string
+	}
 )
 
 func (t Narada) HandleError(err error) {
 	t.logger.Fatal(err)
 }
 
-func New(name string, version string, providers ...interface{}) *Narada {
-	config, err := NewConfig()
+func New(opts Options, providers ...interface{}) *Narada {
+	config, err := NewConfig(opts.EnvPrefix)
 	if err != nil {
 		logger, _ := NewLogger(viper.New())
 		logger.WithField("error", err).Fatal("error reading configuration")
 	}
 
-	config.SetDefault("app.name", name)
-	config.SetDefault("app.version", version)
+	config.SetDefault("app.name", opts.Name)
+	config.SetDefault("app.version", opts.Version)
 
 	logger, err := NewLogger(config)
 	if err != nil {

@@ -16,7 +16,10 @@ func TestNew(t *testing.T) {
 	os.Setenv("LOGGER_LEVEL", "error")
 	defer os.Clearenv()
 
-	app := New("testing", "dev")
+	app := New(Options{
+		Name:    "testing",
+		Version: "dev",
+	})
 
 	t.Run("It should start on and run servers", func(t *testing.T) {
 		errChan := make(chan error, 1)
