@@ -16,28 +16,19 @@ type (
 		logger  *logrus.Logger
 		config  *viper.Viper
 	}
+
+	server struct {
+		name    string
+		handler http.Handler
+		log     logrus.FieldLogger
+	}
+
+	serverOption func(*server)
+
+	Healthchecker func() error
 )
 
-func (ms *Multiserver) Add(name string, handler http.Handler) error {
-	key := fmt.Sprintf("bind.%s", name)
-	addr := ms.config.GetString(key)
-	if addr == "" {
-		return fmt.Errorf("error starting server %s, empty address in config [%s]", name, key)
-	}
-
-	if _, ok := ms.servers[name]; ok {
-		return fmt.Errorf("error adding server, duplicate key: %s", name)
-	}
-
-	srv := &http.Server{
-		Addr:    addr,
-		Handler: handler,
-	}
-
-	ms.servers[name] = srv
-
-	return nil
-}
+var noopHealthcheck = func() error { return nil }
 
 func NewMultiServers(config *viper.Viper, logger *logrus.Logger, lc fx.Lifecycle) (*Multiserver, error) {
 	servers := make(map[string]*http.Server)
@@ -92,4 +83,72 @@ func NewMultiServers(config *viper.Viper, logger *logrus.Logger, lc fx.Lifecycle
 	})
 
 	return ms, nil
+}
+
+func (ms *Multiserver) Add(name string, handler http.Handler, opts ...serverOption) error {
+	s := &server{name: name, handler: handler, log: ms.logger.WithField("server", name)}
+	for _, o := range opts {
+		o(s)
+	}
+
+	key := fmt.Sprintf("bind.%s", s.name)
+	addr := ms.config.GetString(key)
+	if addr == "" {
+		return fmt.Errorf("error starting server %s, empty address in config [%s]", s.name, key)
+	}
+
+	if _, ok := ms.servers[s.name]; ok {
+		return fmt.Errorf("error adding server, duplicate key: %s", s.name)
+	}
+
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: s.handler,
+	}
+
+	ms.servers[s.name] = srv
+
+	return nil
+}
+
+func (ms *Multiserver) AddHealthcheck(name string, path string, check Healthchecker) error {
+	log := ms.logger.WithField("server", name)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc(path, newHealthcheckHandler(log, check))
+	mux.HandleFunc("/", newNotFoundHealthcheckHandler(log))
+
+	return ms.Add(name, mux)
+}
+
+func WithHealthcheck(path string) serverOption {
+	return func(s *server) {
+		mux := http.NewServeMux()
+		mux.HandleFunc(path, newHealthcheckHandler(s.log, noopHealthcheck))
+		mux.Handle("/", s.handler)
+
+		s.handler = mux
+	}
+}
+
+func newHealthcheckHandler(log logrus.FieldLogger, check Healthchecker) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		log = log.WithField("path", r.URL.Path)
+
+		if err := check(); err != nil {
+			rw.WriteHeader(http.StatusInternalServerError)
+			log.WithError(err).Error("healthcheck failed")
+			return
+		}
+
+		rw.WriteHeader(http.StatusOK)
+		log.Info("healthcheck served")
+	}
+}
+
+func newNotFoundHealthcheckHandler(log logrus.FieldLogger) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		rw.WriteHeader(http.StatusNotFound)
+		log.WithField("path", r.URL.Path).Error("unknown healthcheck request")
+	}
 }
