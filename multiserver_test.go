@@ -2,10 +2,12 @@ package narada
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/fx/fxtest"
@@ -98,5 +100,97 @@ func TestNewMultiServers(t *testing.T) {
 		case <-time.After(time.Second * 10):
 			t.Fatalf("failure, timeout for server starting")
 		}
+	})
+
+	t.Run("WithHealthcheck", func(t *testing.T) {
+		cfg := viper.New()
+		logger := logrus.New()
+		lc := fxtest.NewLifecycle(t)
+
+		ms, err := NewMultiServers(cfg, logger, lc)
+		assert.NoError(t, err)
+
+		cfg.Set("bind.test", ":12346")
+
+		err = ms.Add(
+			"test",
+			http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+				rw.WriteHeader(http.StatusTeapot)
+			}),
+			WithHealthcheck("/health"),
+		)
+		assert.NoError(t, err)
+
+		err = lc.Start(context.Background())
+		assert.NoError(t, err)
+
+		{
+			res, err := http.Get("http://localhost:12346/1/ping")
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusTeapot, res.StatusCode)
+		}
+
+		{
+			res, err := http.Get("http://localhost:12346/health1")
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusTeapot, res.StatusCode)
+		}
+
+		{
+			res, err := http.Get("http://localhost:12346/health")
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusOK, res.StatusCode)
+		}
+
+		err = lc.Stop(context.Background())
+		assert.NoError(t, err)
+	})
+
+	t.Run("AddHealthcheck", func(t *testing.T) {
+		cfg := viper.New()
+		logger := logrus.New()
+		lc := fxtest.NewLifecycle(t)
+
+		ms, err := NewMultiServers(cfg, logger, lc)
+		assert.NoError(t, err)
+
+		cfg.Set("bind.test_success", ":12346")
+		cfg.Set("bind.test_failure", ":12347")
+
+		err = ms.AddHealthcheck("test_success", "/healthz", func() error { return nil })
+		assert.NoError(t, err)
+
+		err = ms.AddHealthcheck("test_failure", "/healthz", func() error { return errors.New("test") })
+		assert.NoError(t, err)
+
+		err = lc.Start(context.Background())
+		assert.NoError(t, err)
+
+		{
+			res, err := http.Get("http://localhost:12346")
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusNotFound, res.StatusCode)
+		}
+
+		{
+			res, err := http.Get("http://localhost:12346/health")
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusNotFound, res.StatusCode)
+		}
+
+		{
+			res, err := http.Get("http://localhost:12346/healthz")
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusOK, res.StatusCode)
+		}
+
+		{
+			res, err := http.Get("http://localhost:12347/healthz")
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusInternalServerError, res.StatusCode)
+		}
+
+		err = lc.Stop(context.Background())
+		assert.NoError(t, err)
 	})
 }

@@ -12,44 +12,26 @@ import (
 
 type (
 	Multiserver struct {
-		servers map[string]*server
+		servers map[string]*http.Server
 		logger  *logrus.Logger
 		config  *viper.Viper
 	}
+
+	server struct {
+		name    string
+		handler http.Handler
+		log     logrus.FieldLogger
+	}
+
+	serverOption func(*server)
+
+	Healthchecker func() error
 )
 
-func (ms *Multiserver) Add(name string, handler http.Handler) error {
-	key := fmt.Sprintf("bind.%s", name)
-	addr := ms.config.GetString(key)
-	if addr == "" {
-		return fmt.Errorf("error starting server %s, empty address in config [%s]", name, key)
-	}
-
-	if _, ok := ms.servers[name]; ok {
-		return fmt.Errorf("error adding server, duplicate key: %s", name)
-	}
-
-	srv := &server{
-		s: &http.Server{
-			Addr:    addr,
-			Handler: handler,
-		},
-	}
-
-	if ms.config.IsSet("tls." + name) {
-		srv.tls = &tlsConfig{
-			certFile: ms.config.GetString("tls." + name + ".cert_file"),
-			keyFile:  ms.config.GetString("tls." + name + ".key_file"),
-		}
-	}
-
-	ms.servers[name] = srv
-
-	return nil
-}
+var noopHealthcheck = func() error { return nil }
 
 func NewMultiServers(config *viper.Viper, logger *logrus.Logger, lc fx.Lifecycle) (*Multiserver, error) {
-	servers := make(map[string]*server)
+	servers := make(map[string]*http.Server)
 
 	// Default bindings for metrics & pprof
 	config.SetDefault("bind.pprof", ":9001")
@@ -66,9 +48,9 @@ func NewMultiServers(config *viper.Viper, logger *logrus.Logger, lc fx.Lifecycle
 			for name, s := range ms.servers {
 				ms.logger.WithFields(logrus.Fields{
 					"server_name": name,
-					"address":     s.s.Addr,
+					"address":     s.Addr,
 				}).Info("starting server")
-				go func(name string, s *server) {
+				go func(name string, s *http.Server) {
 					if err := s.ListenAndServe(); err != nil {
 						if err == http.ErrServerClosed {
 							return
@@ -103,26 +85,70 @@ func NewMultiServers(config *viper.Viper, logger *logrus.Logger, lc fx.Lifecycle
 	return ms, nil
 }
 
-type (
-	server struct {
-		s   *http.Server
-		tls *tlsConfig
+func (ms *Multiserver) Add(name string, handler http.Handler, opts ...serverOption) error {
+	s := &server{name: name, handler: handler, log: ms.logger.WithField("server", name)}
+	for _, o := range opts {
+		o(s)
 	}
 
-	tlsConfig struct {
-		certFile string
-		keyFile  string
-	}
-)
-
-func (s *server) ListenAndServe() error {
-	if s.tls != nil {
-		return s.s.ListenAndServeTLS(s.tls.certFile, s.tls.keyFile)
+	key := fmt.Sprintf("bind.%s", s.name)
+	addr := ms.config.GetString(key)
+	if addr == "" {
+		return fmt.Errorf("error starting server %s, empty address in config [%s]", s.name, key)
 	}
 
-	return s.s.ListenAndServe()
+	if _, ok := ms.servers[s.name]; ok {
+		return fmt.Errorf("error adding server, duplicate key: %s", s.name)
+	}
+
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: s.handler,
+	}
+
+	ms.servers[s.name] = srv
+
+	return nil
 }
 
-func (s *server) Shutdown(ctx context.Context) error {
-	return s.s.Shutdown(ctx)
+func (ms *Multiserver) AddHealthcheck(name string, path string, check Healthchecker) error {
+	log := ms.logger.WithField("server", name)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc(path, newHealthcheckHandler(log, check))
+	mux.HandleFunc("/", newNotFoundHealthcheckHandler(log))
+
+	return ms.Add(name, mux)
+}
+
+func WithHealthcheck(path string) serverOption {
+	return func(s *server) {
+		mux := http.NewServeMux()
+		mux.HandleFunc(path, newHealthcheckHandler(s.log, noopHealthcheck))
+		mux.Handle("/", s.handler)
+
+		s.handler = mux
+	}
+}
+
+func newHealthcheckHandler(log logrus.FieldLogger, check Healthchecker) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		log = log.WithField("path", r.URL.Path)
+
+		if err := check(); err != nil {
+			rw.WriteHeader(http.StatusInternalServerError)
+			log.WithError(err).Error("healthcheck failed")
+			return
+		}
+
+		rw.WriteHeader(http.StatusOK)
+		log.Info("healthcheck served")
+	}
+}
+
+func newNotFoundHealthcheckHandler(log logrus.FieldLogger) http.HandlerFunc {
+	return func(rw http.ResponseWriter, r *http.Request) {
+		rw.WriteHeader(http.StatusNotFound)
+		log.WithField("path", r.URL.Path).Error("unknown healthcheck request")
+	}
 }
