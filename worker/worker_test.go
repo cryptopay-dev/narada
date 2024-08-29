@@ -18,9 +18,7 @@ import (
 	"go.uber.org/fx/fxtest"
 )
 
-//
 // Mocks here
-//
 type mockedLocker struct{}
 
 func (mockedLocker) Obtain(name string, expire time.Duration) lock.Mutex {
@@ -72,19 +70,19 @@ func TestNewWorkers(t *testing.T) {
 
 		w.Add(Job{
 			Name: "first",
-			Handler: func() {
+			Handler: func(ctx context.Context) {
 				a <- true
 			},
 			Period:      time.Millisecond * 100,
 			Immediately: true,
 		}, Job{
 			Name: "second",
-			Handler: func() {
+			Handler: func(ctx context.Context) {
 				b <- true
 			},
 		}, Job{
 			Name: "third",
-			Handler: func() {
+			Handler: func(ctx context.Context) {
 				failure <- true
 			},
 		})
@@ -192,7 +190,7 @@ func TestNewWorkers(t *testing.T) {
 				require.NoError(t, err)
 				w.Add(Job{
 					Name: "exclusive_job",
-					Handler: func() {
+					Handler: func(ctx context.Context) {
 						switch number {
 						case 0:
 							aCounter <- true

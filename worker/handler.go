@@ -75,7 +75,7 @@ func newHandler(
 				Observe(d)
 		}(time.Now())
 
-		job.Handler()
+		job.Handler(ctx)
 	}
 
 	return jh
