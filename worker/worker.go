@@ -33,7 +33,7 @@ type (
 
 	Job struct {
 		Name             string
-		Handler          func()
+		Handler          func(ctx context.Context)
 		Period           time.Duration
 		Cron             string
 		Exclusive        bool
