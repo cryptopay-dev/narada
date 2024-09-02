@@ -2,7 +2,7 @@ package worker
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"os"
 	"sync"
 	"testing"
@@ -251,7 +251,7 @@ func TestNewWorkers(t *testing.T) {
 
 func newNopLogger() *logrus.Logger {
 	logger := logrus.New()
-	logger.Out = ioutil.Discard
+	logger.Out = io.Discard
 
 	return logger
 }

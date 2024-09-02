@@ -1,6 +1,6 @@
 module github.com/cryptopay-dev/narada
 
-go 1.17
+go 1.21
 
 require (
 	github.com/bsm/redislock v0.7.1

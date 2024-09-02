@@ -13,6 +13,10 @@ import (
 var redisAddr = os.Getenv("REDIS_ADDR")
 
 func TestNewRedisLocker(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode")
+	}
+
 	cfg := viper.New()
 	cfg.Set("redis.addr", redisAddr)
 	redis, err := clients.NewRedis(cfg)

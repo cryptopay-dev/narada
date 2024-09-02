@@ -2,7 +2,7 @@ package narada
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
@@ -52,7 +52,7 @@ func NewLogger(config *viper.Viper) (*logrus.Logger, error) {
 
 func NewNopLogger() *logrus.Logger {
 	logger := logrus.New()
-	logger.Out = ioutil.Discard
+	logger.Out = io.Discard
 
 	return logger
 }

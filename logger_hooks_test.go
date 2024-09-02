@@ -2,7 +2,7 @@ package narada
 
 import (
 	"errors"
-	"io/ioutil"
+	"io"
 	"testing"
 	"time"
 
@@ -53,12 +53,6 @@ func TestNewLogrusSlackHook(t *testing.T) {
 	})
 
 	t.Run("Sending message to Slack", func(t *testing.T) {
-		//hwe, err := ioutil.ReadFile("./fixtures/slack/hook_with_error.json")
-		//assert.NoError(t, err)
-
-		//hwm, err := ioutil.ReadFile("./fixtures/slack/hook_with_message.json")
-		//assert.NoError(t, err)
-
 		t.Run("With error attached", func(t *testing.T) {
 			defer gock.Off()
 			done := make(chan bool, 1)
@@ -83,7 +77,7 @@ func TestNewLogrusSlackHook(t *testing.T) {
 			cfg.Set("app.name", "default")
 
 			logger := logrus.New()
-			logger.Out = ioutil.Discard
+			logger.Out = io.Discard
 
 			hook := NewLogrusSlackHook(cfg)
 			logger.AddHook(hook)
@@ -121,7 +115,7 @@ func TestNewLogrusSlackHook(t *testing.T) {
 			cfg.Set("app.name", "default")
 
 			logger := logrus.New()
-			logger.Out = ioutil.Discard
+			logger.Out = io.Discard
 
 			hook := NewLogrusSlackHook(cfg)
 			logger.AddHook(hook)

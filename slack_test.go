@@ -1,7 +1,7 @@
 package narada
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,7 +12,7 @@ func TestNewClient(t *testing.T) {
 	gock.Clean()
 
 	// Reading fixture
-	buf, err := ioutil.ReadFile("./fixtures/slack/request.json")
+	buf, err := os.ReadFile("./fixtures/slack/request.json")
 	assert.NoError(t, err)
 
 	t.Run("Errors", func(t *testing.T) {
