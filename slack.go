@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 )
@@ -70,7 +70,7 @@ func (c *SlackClient) SendMessage(msg *SlackMessage) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		t, _ := ioutil.ReadAll(resp.Body)
+		t, _ := io.ReadAll(resp.Body)
 		return &SlackError{resp.StatusCode, string(t)}
 	}
 

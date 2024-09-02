@@ -9,16 +9,22 @@ import (
 	"github.com/spf13/viper"
 )
 
-type dbQueryHook struct {
-	logger *logrus.Entry
-}
+type (
+	dbQueryHook struct {
+		logger *logrus.Entry
+	}
+
+	ctxKey int
+)
+
+const ctxRequestStartKey ctxKey = 1 + iota
 
 func (d dbQueryHook) BeforeQuery(ctx context.Context, event *pg.QueryEvent) (context.Context, error) {
-	return context.WithValue(ctx, "start_time", time.Now()), nil
+	return context.WithValue(ctx, ctxRequestStartKey, time.Now()), nil
 }
 
 func (d dbQueryHook) AfterQuery(ctx context.Context, event *pg.QueryEvent) error {
-	st, ok := ctx.Value("start_time").(time.Time)
+	st, ok := ctx.Value(ctxRequestStartKey).(time.Time)
 	if !ok {
 		return nil
 	}
