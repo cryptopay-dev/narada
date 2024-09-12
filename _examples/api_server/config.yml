@@ -1,2 +1,3 @@
 bind:
   api: :8080
+  health: :8081

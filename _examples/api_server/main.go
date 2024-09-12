@@ -1,7 +1,10 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"sync/atomic"
 	"time"
@@ -25,17 +28,26 @@ func Run(ms *narada.Multiserver, workers *worker.Workers, logger *logrus.Logger)
 			logger.WithError(err).Error("error writing response")
 		}
 	})
-	if err := ms.Add("api", mux); err != nil {
+	if err := ms.Add("api", mux, narada.WithHealthcheck("/health")); err != nil {
+		return err
+	}
+
+	if err := ms.AddHealthcheck("health", "/health", func() error {
+		if rand.Intn(2) == 1 {
+			return errors.New("healtcheck failed")
+		}
+		return nil
+	}); err != nil {
 		return err
 	}
 
 	// Adding workers
 	job := worker.Job{
 		Name: "counter",
-		Handler: func() {
+		Handler: func(ctx context.Context) {
 			atomic.AddUint64(&counter, 1)
 		},
-		Period:      time.Second,
+		Period:      10 * time.Second,
 		Immediately: true,
 	}
 	workers.Add(job)
@@ -44,5 +56,8 @@ func Run(ms *narada.Multiserver, workers *worker.Workers, logger *logrus.Logger)
 }
 
 func main() {
-	narada.New("api_server", "development").Start(Run)
+	narada.New(narada.Options{
+		Name:    "api_server",
+		Version: "development",
+	}).Start(Run)
 }
