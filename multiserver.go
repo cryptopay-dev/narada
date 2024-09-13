@@ -123,11 +123,13 @@ func (ms *Multiserver) AddHealthcheck(name, path string, check Healthchecker) er
 
 func WithHealthcheck(path string) serverOption {
 	return func(s *server) {
+		hc := newHealthcheckHandler(s.log, noopHealthcheck)
+
 		mux := http.NewServeMux()
-		mux.HandleFunc(path, newHealthcheckHandler(s.log, noopHealthcheck))
+		mux.Handle(path, withServerHealthcheckSummary(s.name, hc))
 		mux.Handle("/", s.handler)
 
-		s.handler = withServerHealthcheckSummary(s.name, mux)
+		s.handler = mux
 	}
 }
 
