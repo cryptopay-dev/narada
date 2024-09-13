@@ -3,6 +3,7 @@ package narada
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"testing"
 	"time"
@@ -111,6 +112,10 @@ func TestNewMultiServers(t *testing.T) {
 		assert.NoError(t, err)
 
 		cfg.Set("bind.test", ":12346")
+		cfg.Set("bind.metrics", ":9002")
+
+		err = NewMetricsInvoke(ms)
+		assert.NoError(t, err)
 
 		err = ms.Add(
 			"test",
@@ -142,6 +147,18 @@ func TestNewMultiServers(t *testing.T) {
 			assert.Equal(t, http.StatusOK, res.StatusCode)
 		}
 
+		// Check metrics
+		{
+			res, err := http.Get("http://localhost:9002")
+			assert.NoError(t, err)
+
+			body, err := io.ReadAll(res.Body)
+			assert.NoError(t, err)
+
+			assert.Contains(t, string(body), `server_healthcheck_duration_seconds_count{code="200",method="get",server="test"} 1`)
+			assert.NotContains(t, string(body), `server_healthcheck_duration_seconds_count{code="418",method="get",server="test"}`)
+		}
+
 		err = lc.Stop(context.Background())
 		assert.NoError(t, err)
 	})
@@ -156,6 +173,10 @@ func TestNewMultiServers(t *testing.T) {
 
 		cfg.Set("bind.test_success", ":12346")
 		cfg.Set("bind.test_failure", ":12347")
+		cfg.Set("bind.metrics", ":9002")
+
+		err = NewMetricsInvoke(ms)
+		assert.NoError(t, err)
 
 		err = ms.AddHealthcheck("test_success", "/healthz", func() error { return nil })
 		assert.NoError(t, err)
@@ -185,9 +206,29 @@ func TestNewMultiServers(t *testing.T) {
 		}
 
 		{
+			res, err := http.Get("http://localhost:12347")
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusNotFound, res.StatusCode)
+		}
+
+		{
 			res, err := http.Get("http://localhost:12347/healthz")
 			assert.NoError(t, err)
 			assert.Equal(t, http.StatusInternalServerError, res.StatusCode)
+		}
+
+		// Check metrics
+		{
+			res, err := http.Get("http://localhost:9002")
+			assert.NoError(t, err)
+
+			body, err := io.ReadAll(res.Body)
+			assert.NoError(t, err)
+
+			assert.Contains(t, string(body), `server_healthcheck_duration_seconds_count{code="404",method="get",server="test_success"} 2`)
+			assert.Contains(t, string(body), `server_healthcheck_duration_seconds_count{code="200",method="get",server="test_success"} 1`)
+			assert.Contains(t, string(body), `server_healthcheck_duration_seconds_count{code="404",method="get",server="test_failure"} 1`)
+			assert.Contains(t, string(body), `server_healthcheck_duration_seconds_count{code="500",method="get",server="test_failure"} 1`)
 		}
 
 		err = lc.Stop(context.Background())
