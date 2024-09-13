@@ -111,14 +111,14 @@ func (ms *Multiserver) Add(name string, handler http.Handler, opts ...serverOpti
 	return nil
 }
 
-func (ms *Multiserver) AddHealthcheck(name string, path string, check Healthchecker) error {
+func (ms *Multiserver) AddHealthcheck(name, path string, check Healthchecker) error {
 	log := ms.logger.WithField("server", name)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc(path, newHealthcheckHandler(log, check))
 	mux.HandleFunc("/", newNotFoundHealthcheckHandler(log))
 
-	return ms.Add(name, mux)
+	return ms.Add(name, withServerHealthcheckSummary(name, mux))
 }
 
 func WithHealthcheck(path string) serverOption {
@@ -127,7 +127,7 @@ func WithHealthcheck(path string) serverOption {
 		mux.HandleFunc(path, newHealthcheckHandler(s.log, noopHealthcheck))
 		mux.Handle("/", s.handler)
 
-		s.handler = mux
+		s.handler = withServerHealthcheckSummary(s.name, mux)
 	}
 }
 
@@ -142,7 +142,7 @@ func newHealthcheckHandler(log logrus.FieldLogger, check Healthchecker) http.Han
 		}
 
 		rw.WriteHeader(http.StatusOK)
-		log.Info("healthcheck served")
+		log.Debug("healthcheck served")
 	}
 }
 
