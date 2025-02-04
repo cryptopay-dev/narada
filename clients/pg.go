@@ -2,6 +2,7 @@ package clients
 
 import (
 	"context"
+	"crypto/tls"
 	"time"
 
 	"github.com/go-pg/pg/v10"
@@ -53,6 +54,9 @@ func NewPostgreSQL(config *viper.Viper, logger *logrus.Logger) *pg.DB {
 		Password: config.GetString("database.password"),
 		Database: config.GetString("database.database"),
 		PoolSize: config.GetInt("database.pool"),
+		TLSConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
 	})
 
 	if config.GetBool("database.debug") {
