@@ -110,7 +110,7 @@ func CreateMigration(p *narada.Narada) *cli.Command {
 
 func connect(v *viper.Viper) (*sql.DB, error) {
 	dsn := fmt.Sprintf(
-		"postgres://%s:%s@%s/%s?sslmode=disable",
+		"postgres://%s:%s@%s/%s",
 		v.GetString("database.user"),
 		v.GetString("database.password"),
 		v.GetString("database.addr"),
