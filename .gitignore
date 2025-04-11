@@ -16,3 +16,5 @@ vendor
 
 # IDE integrations
 .vscode
+
+config.yaml
