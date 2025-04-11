@@ -67,7 +67,7 @@ redis:
 ```
 
 ### PostgreSQL
-**Dependency:** `*pg.DB`  
+**Dependency:** `*bun.DB`  
 **Configuration:**
 ```yaml
 database:
@@ -76,4 +76,6 @@ database:
     password: ""
     database: ""
     pool: 10
+    ssl: true
+    path_to_ssl_root_cert: ""
 ```
