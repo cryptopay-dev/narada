@@ -11,7 +11,6 @@ require (
 	github.com/go-redis/redis/v8 v8.11.4
 	github.com/lib/pq v1.8.0
 	github.com/pkg/errors v0.9.1
-	github.com/pressly/goose v2.6.0+incompatible
 	github.com/prometheus/client_golang v1.11.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/viper v1.9.0
