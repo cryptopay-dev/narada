@@ -18,6 +18,8 @@ jobs:
         image: redis
       postgres:
         image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
     steps:
       - name: Install common dependencies
         run: apk add --no-cache gcc libc-dev
