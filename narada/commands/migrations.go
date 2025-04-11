@@ -1,13 +1,16 @@
 package commands
 
 import (
-	"database/sql"
+	"context"
 	"errors"
-	"fmt"
+	"os"
+	"strings"
 
 	"github.com/cryptopay-dev/narada"
+	"github.com/cryptopay-dev/narada/clients"
+	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/migrate"
 
-	"github.com/pressly/goose"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/urfave/cli/v2"
@@ -15,10 +18,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-const (
-	DefaultMigrationsDir  = "./migrations"
-	DefaultMigrationsType = "sql"
-)
+const DefaultMigrationsDir = "./migrations"
 
 func MigrateUp(p *narada.Narada) *cli.Command {
 	return &cli.Command{
@@ -31,17 +31,29 @@ func MigrateUp(p *narada.Narada) *cli.Command {
 				logger.Println("starting migrations")
 				dir := c.String("dir")
 
-				db, err := connect(v)
+				ctx := context.Background()
+
+				db := clients.NewPostgreSQL(v, logger)
+				m, err := migrator(db, dir)
 				if err != nil {
 					return err
 				}
 
-				goose.SetLogger(logger)
-				if err := goose.Up(db, dir); err != nil {
+				if err = m.Init(ctx); err != nil {
 					return err
 				}
 
-				logger.Println("finished migrating")
+				group, err := m.Migrate(ctx)
+				if err != nil {
+					return err
+				}
+
+				if group.ID == 0 {
+					logger.Println("there are no new migrations to run")
+					return nil
+				}
+
+				logger.Printf("migrated to %s\n", group)
 				return nil
 			})
 
@@ -61,17 +73,29 @@ func MigrateDown(p *narada.Narada) *cli.Command {
 				logger.Println("rolling back migration")
 				dir := c.String("dir")
 
-				db, err := connect(v)
+				ctx := context.Background()
+
+				db := clients.NewPostgreSQL(v, logger)
+				m, err := migrator(db, dir)
 				if err != nil {
 					return err
 				}
 
-				goose.SetLogger(logger)
-				if err := goose.Down(db, dir); err != nil {
+				if err = m.Init(ctx); err != nil {
 					return err
 				}
 
-				logger.Println("finished rollback")
+				group, err := m.Rollback(ctx)
+				if err != nil {
+					return err
+				}
+
+				if group.ID == 0 {
+					logger.Println("there are no groups to rollback")
+					return nil
+				}
+
+				logger.Printf("rolled back %s\n", group)
 				return nil
 			})
 
@@ -86,21 +110,35 @@ func CreateMigration(p *narada.Narada) *cli.Command {
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "name"},
 			&cli.StringFlag{Name: "dir", Value: DefaultMigrationsDir},
-			&cli.StringFlag{Name: "type", Value: DefaultMigrationsType},
 		},
 		Action: func(c *cli.Context) error {
 			p.Invoke(func(logger *logrus.Logger, v *viper.Viper) error {
 				name := c.String("name")
 				dir := c.String("dir")
-				t := c.String("type")
 
 				if name == "" {
 					return errors.New("name cannot be empty")
 				}
+				name = strings.ReplaceAll(name, " ", "_")
 
 				logger.Printf("creating sql migration: %s", name)
-				goose.SetLogger(logger)
-				return goose.Create(nil, dir, name, t)
+
+				db := clients.NewPostgreSQL(v, logger)
+				m, err := migrator(db, dir)
+				if err != nil {
+					return err
+				}
+
+				files, err := m.CreateSQLMigrations(context.Background(), name)
+				if err != nil {
+					return err
+				}
+
+				for _, mf := range files {
+					logger.Printf("created migration %s (%s)\n", mf.Name, mf.Path)
+				}
+
+				return nil
 			})
 
 			return nil
@@ -108,14 +146,11 @@ func CreateMigration(p *narada.Narada) *cli.Command {
 	}
 }
 
-func connect(v *viper.Viper) (*sql.DB, error) {
-	dsn := fmt.Sprintf(
-		"postgres://%s:%s@%s/%s?sslmode=disable",
-		v.GetString("database.user"),
-		v.GetString("database.password"),
-		v.GetString("database.addr"),
-		v.GetString("database.database"),
-	)
+func migrator(db *bun.DB, dir string) (*migrate.Migrator, error) {
+	migrations := migrate.NewMigrations(migrate.WithMigrationsDirectory(dir))
+	if err := migrations.Discover(os.DirFS(dir)); err != nil {
+		return nil, err
+	}
 
-	return sql.Open("postgres", dsn)
+	return migrate.NewMigrator(db, migrations), nil
 }
