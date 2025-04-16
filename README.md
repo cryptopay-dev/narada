@@ -76,4 +76,5 @@ database:
     password: ""
     database: ""
     pool: 10
+    ssl: true
 ```
