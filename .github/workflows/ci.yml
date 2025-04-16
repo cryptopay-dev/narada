@@ -16,6 +16,10 @@ jobs:
     services:
       redis:
         image: redis
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
     steps:
       - name: Install common dependencies
         run: apk add --no-cache gcc libc-dev
@@ -23,3 +27,8 @@ jobs:
       - run: go test -v ./...
         env:
           REDIS_ADDR: redis:6379
+          DATABASE_ADDR: postgres:5432
+          DATABASE_USER: postgres
+          DATABASE_PASSWORD: postgres
+          DATABASE_DATABASE: postgres
+          DATABASE_SSL: false
