@@ -1,11 +1,10 @@
 package commands
 
 import (
-	"database/sql"
 	"errors"
-	"fmt"
 
 	"github.com/cryptopay-dev/narada"
+	"github.com/cryptopay-dev/narada/clients"
 
 	"github.com/pressly/goose"
 	"github.com/sirupsen/logrus"
@@ -31,7 +30,7 @@ func MigrateUp(p *narada.Narada) *cli.Command {
 				logger.Println("starting migrations")
 				dir := c.String("dir")
 
-				db, err := connect(v)
+				db, err := clients.NewPostgreSQLForMigrations(v)
 				if err != nil {
 					return err
 				}
@@ -61,7 +60,7 @@ func MigrateDown(p *narada.Narada) *cli.Command {
 				logger.Println("rolling back migration")
 				dir := c.String("dir")
 
-				db, err := connect(v)
+				db, err := clients.NewPostgreSQLForMigrations(v)
 				if err != nil {
 					return err
 				}
@@ -106,16 +105,4 @@ func CreateMigration(p *narada.Narada) *cli.Command {
 			return nil
 		},
 	}
-}
-
-func connect(v *viper.Viper) (*sql.DB, error) {
-	dsn := fmt.Sprintf(
-		"postgres://%s:%s@%s/%s?sslmode=disable",
-		v.GetString("database.user"),
-		v.GetString("database.password"),
-		v.GetString("database.addr"),
-		v.GetString("database.database"),
-	)
-
-	return sql.Open("postgres", dsn)
 }
