@@ -5,20 +5,20 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - name: Run golangci-lint
-        run: |
-          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
-          golangci-lint run ./...
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
 
   vuln:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - name: Run govulncheck
@@ -37,7 +37,7 @@ jobs:
     steps:
       - name: Install common dependencies
         run: apk add --no-cache gcc libc-dev git
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       # -p 1 runs package tests serially: lock/worker/root share one redis and
       # bind fixed ports, so parallel package binaries collide (flaky otherwise).
       - run: go test -p 1 -v ./...
