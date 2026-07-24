@@ -5,14 +5,28 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Run golangci-lint
-        uses: reviewdog/action-golangci-lint@v1
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v7
         with:
-          github_token: ${{ secrets.github_token }}
+          go-version-file: go.mod
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2
+
+  vuln:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Run govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
   test:
     runs-on: ubuntu-latest
-    container: golang:1.21-alpine3.18
+    container: golang:1.26-alpine3.24
     services:
       redis:
         image: redis
@@ -22,9 +36,11 @@ jobs:
           POSTGRES_PASSWORD: postgres
     steps:
       - name: Install common dependencies
-        run: apk add --no-cache gcc libc-dev
-      - uses: actions/checkout@v4
-      - run: go test -v ./...
+        run: apk add --no-cache gcc libc-dev git
+      - uses: actions/checkout@v6
+      # -p 1 runs package tests serially: lock/worker/root share one redis and
+      # bind fixed ports, so parallel package binaries collide (flaky otherwise).
+      - run: go test -p 1 -v ./...
         env:
           REDIS_ADDR: redis:6379
           DATABASE_ADDR: postgres:5432

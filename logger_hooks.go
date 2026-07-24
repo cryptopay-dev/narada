@@ -32,7 +32,7 @@ func NewLogrusSentryHook() LogrusSentryHook {
 func (h LogrusSentryHook) Fire(entry *logrus.Entry) error {
 	sentry.WithScope(func(scope *sentry.Scope) {
 		scope.SetLevel(sentryLevelMap[entry.Level])
-		scope.SetExtras(entry.Data)
+		scope.SetContext("data", entry.Data)
 
 		sentry.CaptureException(h.extractError(entry))
 	})

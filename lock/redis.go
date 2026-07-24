@@ -2,11 +2,11 @@ package lock
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/bsm/redislock"
 	"github.com/go-redis/redis/v8"
-	"github.com/pkg/errors"
 )
 
 type (
@@ -47,7 +47,7 @@ func (rl *RedisLocker) Obtain(name string, expire time.Duration) Mutex {
 func (mu *redisMutex) Lock() (bool, error) {
 	if mu.lock != nil {
 		if err := mu.lock.Refresh(ctx, mu.expire, lopts); err != nil {
-			return false, errors.Wrap(err, "refresh lock")
+			return false, fmt.Errorf("refresh lock: %w", err)
 		}
 		return true, nil
 	}

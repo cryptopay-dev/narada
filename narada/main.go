@@ -32,7 +32,7 @@ func main() {
 	app.Version = ConsoleToolVersion
 	app.Description = "Narada CLI toolchain"
 	app.Authors = []*cli.Author{
-		&cli.Author{Name: "Pavel Makarenko", Email: "<cryfall@gmail.com>"},
+		{Name: "Pavel Makarenko", Email: "<cryfall@gmail.com>"},
 	}
 	app.Commands = []*cli.Command{
 		commands.MigrateUp(n),

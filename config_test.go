@@ -10,8 +10,8 @@ import (
 func TestNewConfig(t *testing.T) {
 	t.Run("Respecting empty config with env overhaul", func(t *testing.T) {
 		t.Run("Loading empty config and override env", func(t *testing.T) {
-			os.Setenv("NARADA_CONFIG", "./fixtures/empty_config.yml")
-			os.Setenv("RANDOM_VALUE", "i_am_fixture")
+			_ = os.Setenv("NARADA_CONFIG", "./fixtures/empty_config.yml")
+			_ = os.Setenv("RANDOM_VALUE", "i_am_fixture")
 			defer os.Clearenv()
 
 			cfg, err := NewConfig("")
@@ -30,7 +30,7 @@ func TestNewConfig(t *testing.T) {
 		})
 
 		t.Run("Success on configuration", func(t *testing.T) {
-			os.Setenv("NARADA_CONFIG", "./fixtures/config.yml")
+			_ = os.Setenv("NARADA_CONFIG", "./fixtures/config.yml")
 			defer os.Clearenv()
 
 			cfg, err := NewConfig("")
