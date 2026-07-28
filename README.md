@@ -8,8 +8,8 @@
 
 ## What is under the hood?
 Under the hood a lot of different and cool packages such as:
-- Logrus
-- Go-PG
+- log/slog (stdlib)
+- Bun
 - Go-redis
 - Uber FX
 - Viper
@@ -31,7 +31,7 @@ Environment `BINDING_API` will be replaced to `binding.api`.
 
 
 ### Logger
-**Dependency:** `*logrus.Logger`  
+**Dependency:** `*slog.Logger`  
 **Configuration:**
 ```yaml
 logger: 
@@ -67,7 +67,7 @@ redis:
 ```
 
 ### PostgreSQL
-**Dependency:** `*pg.DB`  
+**Dependency:** `*bun.DB`  
 **Configuration:**
 ```yaml
 database:
@@ -76,5 +76,14 @@ database:
     password: ""
     database: ""
     pool: 10
-    ssl: true
+    ssl: true # verifies the server certificate against the system roots
 ```
+
+## Upgrading from v1
+
+`v2` is a breaking release; the module path is now
+`github.com/cryptopay-dev/narada/v2`.
+
+- **`*logrus.Logger` -> `*slog.Logger`.** Injected constructors take `*slog.Logger`. Replace `log.WithError(err).Error("msg")` with `log.Error("msg", narada.Err(err))`, `log.WithField(k, v)` with `log.With(k, v)`, and `log.Fatal(...)` with `narada.Fatal(log, ...)` (slog has no fatal level — the record is emitted at error level and the process exits). The logrus hooks are now `slog.Handler` decorators: `NewLogrusSentryHook`/`NewLogrusSlackHook` became `NewSentryHandler`/`NewSlackHandler`.
+- **`*pg.DB` -> `*bun.DB`.** Query building moves to [bun](https://bun.uptrace.dev). Migrations still run on `goose` and the `goose_db_version` ledger is untouched.
+- **`database.ssl: true`** now verifies the server certificate on the migrations connection too; it previously used `sslmode=verify-ca` there (chain verified, hostname not) while the application connection already required a hostname match.

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 )
 
@@ -13,11 +13,11 @@ func NewRedis(config *viper.Viper) (*redis.Client, error) {
 	config.SetDefault("redis.idle_timeout", time.Second*60)
 
 	client := redis.NewClient(&redis.Options{
-		Addr:        config.GetString("redis.addr"),
-		PoolSize:    config.GetInt("redis.pool_size"),
-		DB:          config.GetInt("redis.db"),
-		IdleTimeout: config.GetDuration("redis.idle_timeout"),
-		Password:    config.GetString("redis.password"),
+		Addr:            config.GetString("redis.addr"),
+		PoolSize:        config.GetInt("redis.pool_size"),
+		DB:              config.GetInt("redis.db"),
+		ConnMaxIdleTime: config.GetDuration("redis.idle_timeout"),
+		Password:        config.GetString("redis.password"),
 	})
 
 	if err := client.Ping(context.TODO()).Err(); err != nil {

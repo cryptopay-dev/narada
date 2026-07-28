@@ -3,9 +3,9 @@ package narada
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
 )
@@ -13,14 +13,14 @@ import (
 type (
 	Multiserver struct {
 		servers map[string]*http.Server
-		logger  *logrus.Logger
+		logger  *slog.Logger
 		config  *viper.Viper
 	}
 
 	server struct {
 		name    string
 		handler http.Handler
-		log     logrus.FieldLogger
+		log     *slog.Logger
 	}
 
 	serverOption func(*server)
@@ -30,7 +30,7 @@ type (
 
 var noopHealthcheck = func() error { return nil }
 
-func NewMultiServers(config *viper.Viper, logger *logrus.Logger, lc fx.Lifecycle) (*Multiserver, error) {
+func NewMultiServers(config *viper.Viper, logger *slog.Logger, lc fx.Lifecycle) (*Multiserver, error) {
 	servers := make(map[string]*http.Server)
 
 	// Default bindings for metrics & pprof
@@ -46,20 +46,20 @@ func NewMultiServers(config *viper.Viper, logger *logrus.Logger, lc fx.Lifecycle
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			for name, s := range ms.servers {
-				ms.logger.WithFields(logrus.Fields{
-					"server_name": name,
-					"address":     s.Addr,
-				}).Info("starting server")
+				ms.logger.Info("starting server",
+					"server_name", name,
+					"address", s.Addr,
+				)
 				go func(name string, s *http.Server) {
 					if err := s.ListenAndServe(); err != nil {
 						if err == http.ErrServerClosed {
 							return
 						}
 
-						ms.logger.WithFields(logrus.Fields{
-							"server_name": name,
-							"error":       err,
-						}).Error("error starting server")
+						ms.logger.Error("error starting server",
+							"server_name", name,
+							Err(err),
+						)
 					}
 				}(name, s)
 			}
@@ -68,13 +68,13 @@ func NewMultiServers(config *viper.Viper, logger *logrus.Logger, lc fx.Lifecycle
 		},
 		OnStop: func(ctx context.Context) error {
 			for name, s := range ms.servers {
-				ms.logger.WithField("server_name", name).Info("shutdown server")
+				ms.logger.Info("shutdown server", "server_name", name)
 
 				if err := s.Shutdown(ctx); err != nil {
-					ms.logger.WithFields(logrus.Fields{
-						"server_name": name,
-						"error":       err,
-					}).Error("error while trying to shutdown server")
+					ms.logger.Error("error while trying to shutdown server",
+						"server_name", name,
+						Err(err),
+					)
 				}
 			}
 
@@ -86,7 +86,7 @@ func NewMultiServers(config *viper.Viper, logger *logrus.Logger, lc fx.Lifecycle
 }
 
 func (ms *Multiserver) Add(name string, handler http.Handler, opts ...serverOption) error {
-	s := &server{name: name, handler: handler, log: ms.logger.WithField("server", name)}
+	s := &server{name: name, handler: handler, log: ms.logger.With("server", name)}
 	for _, o := range opts {
 		o(s)
 	}
@@ -112,7 +112,7 @@ func (ms *Multiserver) Add(name string, handler http.Handler, opts ...serverOpti
 }
 
 func (ms *Multiserver) AddHealthcheck(name, path string, check Healthchecker) error {
-	log := ms.logger.WithField("server", name)
+	log := ms.logger.With("server", name)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc(path, newHealthcheckHandler(log, check))
@@ -133,13 +133,13 @@ func WithHealthcheck(path string) serverOption {
 	}
 }
 
-func newHealthcheckHandler(log logrus.FieldLogger, check Healthchecker) http.HandlerFunc {
+func newHealthcheckHandler(log *slog.Logger, check Healthchecker) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		log = log.WithField("path", r.URL.Path)
+		log := log.With("path", r.URL.Path)
 
 		if err := check(); err != nil {
 			rw.WriteHeader(http.StatusInternalServerError)
-			log.WithError(err).Error("healthcheck failed")
+			log.Error("healthcheck failed", Err(err))
 			return
 		}
 
@@ -148,9 +148,9 @@ func newHealthcheckHandler(log logrus.FieldLogger, check Healthchecker) http.Han
 	}
 }
 
-func newNotFoundHealthcheckHandler(log logrus.FieldLogger) http.HandlerFunc {
+func newNotFoundHealthcheckHandler(log *slog.Logger) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		rw.WriteHeader(http.StatusNotFound)
-		log.WithField("path", r.URL.Path).Error("unknown healthcheck request")
+		log.Error("unknown healthcheck request", "path", r.URL.Path)
 	}
 }

@@ -4,17 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math/rand"
 	"net/http"
 	"sync/atomic"
 	"time"
 
-	"github.com/cryptopay-dev/narada"
-	"github.com/cryptopay-dev/narada/worker"
-	"github.com/sirupsen/logrus"
+	"github.com/cryptopay-dev/narada/v2"
+	"github.com/cryptopay-dev/narada/v2/worker"
 )
 
-func Run(ms *narada.Multiserver, workers *worker.Workers, logger *logrus.Logger) error {
+func Run(ms *narada.Multiserver, workers *worker.Workers, logger *slog.Logger) error {
 	// Atomic counter
 	var counter uint64
 
@@ -25,7 +25,7 @@ func Run(ms *narada.Multiserver, workers *worker.Workers, logger *logrus.Logger)
 
 		greetings := fmt.Sprintf("Hello, user! Counter is %d", atomic.LoadUint64(&counter))
 		if _, err := writer.Write([]byte(greetings)); err != nil {
-			logger.WithError(err).Error("error writing response")
+			logger.Error("error writing response", narada.Err(err))
 		}
 	})
 	if err := ms.Add("api", mux, narada.WithHealthcheck("/health")); err != nil {

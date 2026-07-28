@@ -4,15 +4,35 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net"
 	"net/http"
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/fx/fxtest"
 )
+
+// waitForServer blocks until addr accepts connections. The multiserver OnStart
+// hook only launches the ListenAndServe goroutines, so without this a request
+// can beat the listener to the port.
+func waitForServer(t *testing.T, addr string) {
+	t.Helper()
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
+		if err == nil {
+			_ = conn.Close()
+			return
+		}
+
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	t.Fatalf("server on %s never came up", addr)
+}
 
 func TestNewMultiServers(t *testing.T) {
 	t.Run("Adding", func(t *testing.T) {
@@ -105,7 +125,7 @@ func TestNewMultiServers(t *testing.T) {
 
 	t.Run("WithHealthcheck", func(t *testing.T) {
 		cfg := viper.New()
-		logger := logrus.New()
+		logger := NewNopLogger()
 		lc := fxtest.NewLifecycle(t)
 
 		ms, err := NewMultiServers(cfg, logger, lc)
@@ -128,6 +148,8 @@ func TestNewMultiServers(t *testing.T) {
 
 		err = lc.Start(context.Background())
 		assert.NoError(t, err)
+		waitForServer(t, "localhost:12346")
+		waitForServer(t, "localhost:9002")
 
 		{
 			res, err := http.Get("http://localhost:12346/1/ping")
@@ -165,7 +187,7 @@ func TestNewMultiServers(t *testing.T) {
 
 	t.Run("AddHealthcheck", func(t *testing.T) {
 		cfg := viper.New()
-		logger := logrus.New()
+		logger := NewNopLogger()
 		lc := fxtest.NewLifecycle(t)
 
 		ms, err := NewMultiServers(cfg, logger, lc)
@@ -186,6 +208,9 @@ func TestNewMultiServers(t *testing.T) {
 
 		err = lc.Start(context.Background())
 		assert.NoError(t, err)
+		waitForServer(t, "localhost:12346")
+		waitForServer(t, "localhost:12347")
+		waitForServer(t, "localhost:9002")
 
 		{
 			res, err := http.Get("http://localhost:12346")

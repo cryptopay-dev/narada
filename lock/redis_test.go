@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cryptopay-dev/narada/clients"
+	"github.com/cryptopay-dev/narada/v2/clients"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )

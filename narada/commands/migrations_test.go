@@ -1,14 +1,14 @@
 package commands
 
 import (
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/cryptopay-dev/narada/clients"
+	"github.com/cryptopay-dev/narada/v2/clients"
 
 	"github.com/pressly/goose/v3"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -76,7 +76,7 @@ func dropTestTables(t *testing.T, v *viper.Viper) {
 // future goose bump that breaks migration application or rollback fails here.
 func TestMigrateUpDown(t *testing.T) {
 	v := migrationTestConfig(t)
-	logger := logrus.New()
+	logger := slog.New(slog.DiscardHandler)
 
 	// Isolate goose's ledger, and restore the default afterwards.
 	goose.SetTableName(testLedgerTable)
@@ -123,7 +123,7 @@ func TestMigrateUpDown(t *testing.T) {
 func TestMigrateCreate(t *testing.T) {
 	dir := t.TempDir()
 
-	if err := migrateCreate(logrus.New(), dir, "add_widget", DefaultMigrationsType); err != nil {
+	if err := migrateCreate(slog.New(slog.DiscardHandler), dir, "add_widget", DefaultMigrationsType); err != nil {
 		t.Fatalf("migrateCreate: %v", err)
 	}
 
