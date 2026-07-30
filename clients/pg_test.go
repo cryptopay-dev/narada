@@ -1,12 +1,17 @@
 package clients
 
 import (
+	"context"
+	"log/slog"
 	"os"
 	"testing"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
+
+func nopLogger() *slog.Logger {
+	return slog.New(slog.DiscardHandler)
+}
 
 func TestNewPostgreSQL(t *testing.T) {
 	if testing.Short() {
@@ -14,23 +19,19 @@ func TestNewPostgreSQL(t *testing.T) {
 	}
 
 	cfg := setupConfig()
-	logger := logrus.New()
 
-	db, err := NewPostgreSQL(cfg, logger)
+	db, err := NewPostgreSQL(cfg, nopLogger())
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() { _ = db.Close() }()
 
-	type StringResult struct {
-		Message string
-	}
-	var res StringResult
-	_, err = db.QueryOne(&res, "SELECT 'hello' AS message")
-	if err != nil {
+	var message string
+	if err := db.NewRaw("SELECT 'hello' AS message").Scan(context.Background(), &message); err != nil {
 		t.Fatal(err)
 	}
 
-	if res.Message != "hello" {
+	if message != "hello" {
 		t.Error("unexpected message")
 	}
 }
@@ -46,17 +47,14 @@ func TestNewPostgreSQLForMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer func() { _ = db.Close() }()
 
-	type StringResult struct {
-		Message string
-	}
-	var res StringResult
-	err = db.QueryRow("SELECT 'hello' AS message").Scan(&res.Message)
-	if err != nil {
+	var message string
+	if err := db.QueryRow("SELECT 'hello' AS message").Scan(&message); err != nil {
 		t.Fatal(err)
 	}
 
-	if res.Message != "hello" {
+	if message != "hello" {
 		t.Error("unexpected message")
 	}
 }
@@ -73,10 +71,8 @@ func setupConfig() *viper.Viper {
 }
 
 func TestNewPostgreSQLOptions(t *testing.T) {
-	logger := logrus.New()
-
 	// Missing address is rejected.
-	if _, err := NewPostgreSQL(viper.New(), logger); err == nil {
+	if _, err := NewPostgreSQL(viper.New(), nopLogger()); err == nil {
 		t.Error("expected error for missing database address")
 	}
 
@@ -84,7 +80,7 @@ func TestNewPostgreSQLOptions(t *testing.T) {
 	badAddr := viper.New()
 	badAddr.Set("database.addr", "no-port-here")
 	badAddr.Set("database.ssl", true)
-	if _, err := NewPostgreSQL(badAddr, logger); err == nil {
+	if _, err := NewPostgreSQL(badAddr, nopLogger()); err == nil {
 		t.Error("expected error for malformed address with ssl enabled")
 	}
 
@@ -94,7 +90,7 @@ func TestNewPostgreSQLOptions(t *testing.T) {
 	sslCfg.Set("database.user", "u")
 	sslCfg.Set("database.database", "d")
 	sslCfg.Set("database.ssl", true)
-	db, err := NewPostgreSQL(sslCfg, logger)
+	db, err := NewPostgreSQL(sslCfg, nopLogger())
 	if err != nil {
 		t.Fatalf("ssl NewPostgreSQL: %v", err)
 	}
@@ -110,7 +106,15 @@ func TestNewPostgreSQLForMigrationsOptions(t *testing.T) {
 		t.Error("expected error for missing database address")
 	}
 
-	// SSL enabled produces a verify-ca DSN (lazy open, no connection made).
+	// A malformed address is rejected on the SSL path here too.
+	badAddr := viper.New()
+	badAddr.Set("database.addr", "no-port-here")
+	badAddr.Set("database.ssl", true)
+	if _, err := NewPostgreSQLForMigrations(badAddr); err == nil {
+		t.Error("expected error for malformed address with ssl enabled")
+	}
+
+	// SSL enabled builds a TLS-configured handle (lazy open, no connection made).
 	sslCfg := viper.New()
 	sslCfg.Set("database.addr", "localhost:5432")
 	sslCfg.Set("database.user", "u")
@@ -133,17 +137,25 @@ func TestNewPostgreSQLDebugHooks(t *testing.T) {
 	cfg := setupConfig()
 	cfg.Set("database.debug", true)
 
-	db, err := NewPostgreSQL(cfg, logrus.New())
+	db, err := NewPostgreSQL(cfg, nopLogger())
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = db.Close() }()
 
-	var res struct{ Message string }
-	if _, err := db.QueryOne(&res, "SELECT 'hi' AS message"); err != nil {
+	ctx := context.Background()
+
+	var message string
+	if err := db.NewRaw("SELECT 'hi' AS message").Scan(ctx, &message); err != nil {
 		t.Fatal(err)
 	}
-	if res.Message != "hi" {
+	if message != "hi" {
 		t.Error("unexpected message")
+	}
+
+	// The hook's failure branch must be exercised too.
+	var ignored string
+	if err := db.NewRaw("SELECT no_such_column").Scan(ctx, &ignored); err == nil {
+		t.Error("expected a query error")
 	}
 }

@@ -3,12 +3,12 @@ package worker
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/chapsuk/worker"
-	"github.com/cryptopay-dev/narada/lock"
-	"github.com/sirupsen/logrus"
+	"github.com/cryptopay-dev/narada/v2/lock"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
 )
@@ -16,7 +16,7 @@ import (
 type (
 	Workers struct {
 		locker   lock.Locker
-		logger   *logrus.Entry
+		logger   *slog.Logger
 		config   *viper.Viper
 		handlers map[string]*handler
 		wg       *worker.Group
@@ -25,7 +25,7 @@ type (
 	Options struct {
 		fx.In
 
-		Logger *logrus.Logger
+		Logger *slog.Logger
 		Config *viper.Viper
 		Locker lock.Locker
 		LC     fx.Lifecycle
@@ -45,7 +45,7 @@ type (
 func New(opts Options) (*Workers, error) {
 	w := &Workers{
 		wg:       worker.NewGroup(),
-		logger:   opts.Logger.WithField("module", "workers"),
+		logger:   opts.Logger.With("module", "workers"),
 		locker:   opts.Locker,
 		config:   opts.Config,
 		handlers: make(map[string]*handler),
@@ -67,7 +67,7 @@ func New(opts Options) (*Workers, error) {
 
 				for name, handler := range w.handlers {
 					if err := handler.ReleaseLocks(); err != nil {
-						w.logger.WithError(err).WithField("job_name", name).Error("error releasing lock")
+						w.logger.Error("error releasing lock", "job_name", name, slog.Any("error", err))
 					}
 				}
 			}
@@ -92,18 +92,18 @@ func (w *Workers) Add(jobs ...Job) {
 			w.config.SetDefault(periodKey, job.Period)
 
 			if !w.config.GetBool(enabledKey) {
-				w.logger.Infof("skipping %s job, it's disabled by configuration", name)
+				w.logger.Info("skipping job, it's disabled by configuration", "job_name", name)
 				continue
 			}
 
 			job.Period = w.config.GetDuration(periodKey)
 		}
 
-		w.logger.WithFields(logrus.Fields{
-			"job_name":   name,
-			"job_period": job.Period,
-			"job_cron":   job.Cron,
-		}).Info("adding new job to workers")
+		w.logger.Info("adding new job to workers",
+			"job_name", name,
+			"job_period", job.Period,
+			"job_cron", job.Cron,
+		)
 
 		func(j Job) {
 			// Creating handler

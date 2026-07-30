@@ -1,12 +1,11 @@
 package main
 
 import (
+	"log/slog"
 	"os"
 
-	"github.com/cryptopay-dev/narada"
-	"github.com/cryptopay-dev/narada/narada/commands"
-
-	"github.com/sirupsen/logrus"
+	"github.com/cryptopay-dev/narada/v2"
+	"github.com/cryptopay-dev/narada/v2/narada/commands"
 
 	"github.com/urfave/cli/v2"
 )
@@ -18,7 +17,7 @@ const (
 
 func main() {
 	// Creating logger system
-	logger := logrus.New()
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
 
 	// Creating instance of Narada
 	n := narada.New(narada.Options{
@@ -41,6 +40,6 @@ func main() {
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		logger.Fatalf("error starting: %v", err)
+		narada.Fatal(logger, "error starting", narada.Err(err))
 	}
 }

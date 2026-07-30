@@ -2,19 +2,20 @@ package narada
 
 import (
 	"context"
+	"log/slog"
 
-	"github.com/cryptopay-dev/narada/clients"
-	"github.com/cryptopay-dev/narada/lock"
-	"github.com/cryptopay-dev/narada/worker"
-	"github.com/sirupsen/logrus"
+	"github.com/cryptopay-dev/narada/v2/clients"
+	"github.com/cryptopay-dev/narada/v2/lock"
+	"github.com/cryptopay-dev/narada/v2/worker"
 	"github.com/spf13/viper"
 	"go.uber.org/fx"
+	"go.uber.org/fx/fxevent"
 )
 
 type (
 	Narada struct {
 		providers []interface{}
-		logger    *logrus.Logger
+		logger    *slog.Logger
 		config    *viper.Viper
 		app       *fx.App
 	}
@@ -27,14 +28,14 @@ type (
 )
 
 func (t Narada) HandleError(err error) {
-	t.logger.Fatal(err)
+	Fatal(t.logger, err.Error())
 }
 
 func New(opts Options, providers ...interface{}) *Narada {
 	config, err := NewConfig(opts.EnvPrefix)
 	if err != nil {
 		logger, _ := NewLogger(viper.New())
-		logger.WithField("error", err).Fatal("error reading configuration")
+		Fatal(logger, "error reading configuration", Err(err))
 	}
 
 	config.SetDefault("app.name", opts.Name)
@@ -43,7 +44,7 @@ func New(opts Options, providers ...interface{}) *Narada {
 	logger, err := NewLogger(config)
 	if err != nil {
 		logger, _ := NewLogger(viper.New())
-		logger.WithField("error", err).Fatal("error creating logger from configuration")
+		Fatal(logger, "error creating logger from configuration", Err(err))
 	}
 
 	return &Narada{
@@ -72,7 +73,7 @@ func (t *Narada) Start(fn interface{}) {
 func (t *Narada) Stop() {
 	err := t.app.Stop(context.Background())
 	if err != nil {
-		t.logger.Fatalf("error stopping: %v", err)
+		Fatal(t.logger, "error stopping", Err(err))
 	}
 }
 
@@ -85,14 +86,14 @@ func (t *Narada) Invoke(fn interface{}) {
 func (t *Narada) build(opts ...fx.Option) *fx.App {
 	// Creating application
 	opts = append(opts,
-		// Setting default logger to discard
-		fx.Logger(NewNopLogger()),
+		// Silencing fx's own lifecycle logging
+		fx.WithLogger(func() fxevent.Logger { return fxevent.NopLogger }),
 
 		fx.ErrorHook(t),
 
 		fx.Provide(
 			// Fundamentals
-			func() *logrus.Logger { return t.logger },
+			func() *slog.Logger { return t.logger },
 			func() *viper.Viper { return t.config },
 
 			// Servers handling

@@ -5,23 +5,20 @@ import (
 	"crypto/tls"
 	"database/sql"
 	"errors"
-	"fmt"
-	"net/url"
-	"strings"
+	"log/slog"
+	"net"
 	"time"
 
-	pg "github.com/go-pg/pg/v10"
-	_ "github.com/lib/pq"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"github.com/uptrace/bun"
+	"github.com/uptrace/bun/dialect/pgdialect"
+	"github.com/uptrace/bun/driver/pgdriver"
 )
 
 type (
 	dbQueryHook struct {
-		logger *logrus.Entry
+		logger *slog.Logger
 	}
-
-	ctxKey int
 
 	dbConfig struct {
 		addr     string
@@ -34,68 +31,50 @@ type (
 	}
 )
 
-const ctxRequestStartKey ctxKey = 1 + iota
+var _ bun.QueryHook = (*dbQueryHook)(nil)
 
-func (d dbQueryHook) BeforeQuery(ctx context.Context, event *pg.QueryEvent) (context.Context, error) {
-	return context.WithValue(ctx, ctxRequestStartKey, time.Now()), nil
+func (d *dbQueryHook) BeforeQuery(ctx context.Context, _ *bun.QueryEvent) context.Context {
+	return ctx
 }
 
-func (d dbQueryHook) AfterQuery(ctx context.Context, event *pg.QueryEvent) error {
-	st, ok := ctx.Value(ctxRequestStartKey).(time.Time)
-	if !ok {
-		return nil
+func (d *dbQueryHook) AfterQuery(_ context.Context, event *bun.QueryEvent) {
+	if event.Err != nil {
+		d.logger.Error("query failed",
+			"query", event.Query,
+			"elapsed", time.Since(event.StartTime),
+			slog.Any("error", event.Err),
+		)
+
+		return
 	}
 
-	q, err := event.FormattedQuery()
-	if err != nil {
-		d.logger.WithError(err).Error("error getting formatted query")
-		return nil
-	}
-
-	d.logger.WithFields(logrus.Fields{
-		"query":   string(q),
-		"elapsed": time.Since(st),
-	}).Info("query completed")
-
-	return nil
+	d.logger.Info("query completed",
+		"query", event.Query,
+		"elapsed", time.Since(event.StartTime),
+	)
 }
 
-func NewPostgreSQL(config *viper.Viper, logger *logrus.Logger) (*pg.DB, error) {
+// NewPostgreSQL builds the application's Postgres handle.
+func NewPostgreSQL(config *viper.Viper, logger *slog.Logger) (*bun.DB, error) {
 	cfg, err := parseDBConfig(config)
 	if err != nil {
 		return nil, err
 	}
 
-	opts := &pg.Options{
-		Addr:     cfg.addr,
-		User:     cfg.user,
-		Password: cfg.password,
-		Database: cfg.database,
-		PoolSize: cfg.poolSize,
+	sqldb, err := openDB(cfg)
+	if err != nil {
+		return nil, err
 	}
 
-	if cfg.ssl {
-		hp := strings.Split(cfg.addr, ":")
-		if len(hp) != 2 {
-			return nil, errors.New("database address has wrong format")
-		}
-
-		opts.TLSConfig = &tls.Config{
-			InsecureSkipVerify: false,
-			ServerName:         hp[0],
-		}
-	}
-
-	connection := pg.Connect(opts)
+	db := bun.NewDB(sqldb, pgdialect.New())
 
 	if cfg.debug {
-		entry := logger.WithField("module", "db")
-		connection.AddQueryHook(dbQueryHook{
-			logger: entry,
+		db.AddQueryHook(&dbQueryHook{
+			logger: logger.With("module", "db"),
 		})
 	}
 
-	return connection, nil
+	return db, nil
 }
 
 // NewPostgreSQLForMigrations is a connection that is used for migrations.
@@ -106,21 +85,50 @@ func NewPostgreSQLForMigrations(config *viper.Viper) (*sql.DB, error) {
 		return nil, err
 	}
 
-	dsn := fmt.Sprintf(
-		"postgres://%s:%s@%s/%s",
-		cfg.user,
-		strings.ReplaceAll(url.QueryEscape(cfg.password), ":", "%3A"),
-		cfg.addr,
-		cfg.database,
-	)
+	return openDB(cfg)
+}
 
-	if cfg.ssl {
-		dsn += "?sslmode=verify-ca"
-	} else {
-		dsn += "?sslmode=disable"
+// openDB builds a lazily-connecting *sql.DB from cfg. Both the bun handle and
+// the migrations handle go through here, so they share one TLS policy.
+func openDB(cfg dbConfig) (*sql.DB, error) {
+	// pgdriver panics on an empty user/database rather than returning an error,
+	// so leave those options off entirely when unset and let it apply its own
+	// defaults — which is what go-pg did before.
+	opts := []pgdriver.Option{
+		pgdriver.WithAddr(cfg.addr),
+		pgdriver.WithPassword(cfg.password),
 	}
 
-	return sql.Open("postgres", dsn)
+	if cfg.user != "" {
+		opts = append(opts, pgdriver.WithUser(cfg.user))
+	}
+
+	if cfg.database != "" {
+		opts = append(opts, pgdriver.WithDatabase(cfg.database))
+	}
+
+	if cfg.ssl {
+		// pgdriver derives no ServerName of its own when handed a tls.Config, so
+		// take the host from the address the same way the DSN parser would.
+		host, _, err := net.SplitHostPort(cfg.addr)
+		if err != nil {
+			return nil, errors.New("database address has wrong format")
+		}
+
+		opts = append(opts, pgdriver.WithTLSConfig(&tls.Config{
+			ServerName: host,
+			MinVersion: tls.VersionTLS12,
+		}))
+	} else {
+		// pgdriver defaults to TLS-with-skip-verify; turn it off explicitly.
+		opts = append(opts, pgdriver.WithInsecure(true))
+	}
+
+	sqldb := sql.OpenDB(pgdriver.NewConnector(opts...))
+	sqldb.SetMaxOpenConns(cfg.poolSize)
+	sqldb.SetMaxIdleConns(cfg.poolSize)
+
+	return sqldb, nil
 }
 
 func parseDBConfig(config *viper.Viper) (dbConfig, error) {

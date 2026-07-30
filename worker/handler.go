@@ -2,12 +2,11 @@ package worker
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
-	"github.com/cryptopay-dev/narada/lock"
+	"github.com/cryptopay-dev/narada/v2/lock"
 )
 
 const Prefix = "narada"
@@ -15,7 +14,7 @@ const Prefix = "narada"
 type handler struct {
 	job    Job
 	locker lock.Locker
-	logger *logrus.Entry
+	logger *slog.Logger
 
 	lock    lock.Mutex
 	refresh *time.Ticker
@@ -25,12 +24,12 @@ type handler struct {
 func newHandler(
 	job Job,
 	locker lock.Locker,
-	logger *logrus.Entry,
+	logger *slog.Logger,
 ) *handler {
 	jh := &handler{
 		job:    job,
 		locker: locker,
-		logger: logger.WithField("job_name", job.Name),
+		logger: logger.With("job_name", job.Name),
 	}
 
 	go jh.refreshExclusiveLock(time.Second * 30)
@@ -50,7 +49,7 @@ func newHandler(
 			// Trying to lock, if cannot we should wait till next run
 			obtained, err := mutex.Lock()
 			if err != nil {
-				jh.logger.WithError(err).Error("error obtaining lock")
+				jh.logger.Error("error obtaining lock", slog.Any("error", err))
 
 				jh.lock = nil
 				return
@@ -69,7 +68,7 @@ func newHandler(
 		defer func(start time.Time) {
 			d := time.Since(start).Seconds()
 
-			jh.logger.WithField("duration", d).Debug("job finished")
+			jh.logger.Debug("job finished", "duration", d)
 			workerSummary.
 				WithLabelValues(job.Name).
 				Observe(d)
@@ -94,7 +93,7 @@ func (j *handler) refreshExclusiveLock(frequency time.Duration) {
 		}
 
 		if _, err := j.lock.Lock(); err != nil {
-			j.logger.WithError(err).Error("error refreshing lock")
+			j.logger.Error("error refreshing lock", slog.Any("error", err))
 		}
 	}
 }
