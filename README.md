@@ -77,7 +77,10 @@ database:
     database: ""
     pool: 10
     ssl: true # verifies the server certificate against the system roots
+    migrations_lock_timeout: 15m # how long `migrate:up`/`migrate:down` wait for another migrator
 ```
+
+`migrate:up` and `migrate:down` hold a Postgres session advisory lock (goose's default lock ID) while they run, so migrators started concurrently — e.g. one init container per ECS task — apply each migration exactly once. The rest wait, then find nothing pending. A migrator that can't take the lock within `migrations_lock_timeout` fails. Session advisory locks need a direct connection or session pooling; they don't hold through a transaction-mode pooler.
 
 ## Upgrading from v1
 

@@ -1,16 +1,20 @@
 package commands
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/cryptopay-dev/narada/v2"
 	"github.com/cryptopay-dev/narada/v2/clients"
 
 	"github.com/pressly/goose/v3"
+	"github.com/pressly/goose/v3/lock"
 	"github.com/spf13/viper"
 	"github.com/urfave/cli/v2"
 )
@@ -19,7 +23,10 @@ const (
 	DefaultMigrationsDir  = "./migrations"
 	DefaultMigrationsType = "sql"
 
-	migrationsDialect = "postgres"
+	DefaultMigrationsLockTimeout = 15 * time.Minute
+
+	migrationsLockTimeoutKey = "database.migrations_lock_timeout"
+	migrationsLockPeriod     = time.Second
 )
 
 // gooseLogger adapts a *slog.Logger to goose's printf-style Logger interface.
@@ -36,41 +43,63 @@ func (g gooseLogger) Fatalf(format string, v ...any) {
 	os.Exit(1)
 }
 
-// setupGoose points goose at our logger and the postgres dialect.
-func setupGoose(logger *slog.Logger) error {
-	goose.SetLogger(gooseLogger{logger: logger})
+// newProvider builds a goose provider that holds a Postgres advisory lock while migrating, so concurrent `migrate:up` runs (e.g. one per ECS task) apply each migration exactly once.
+func newProvider(logger *slog.Logger, v *viper.Viper, db *sql.DB, dir string, opts ...goose.ProviderOption) (*goose.Provider, error) {
+	v.SetDefault(migrationsLockTimeoutKey, DefaultMigrationsLockTimeout)
 
-	return goose.SetDialect(migrationsDialect)
+	attempts := uint64(v.GetDuration(migrationsLockTimeoutKey) / migrationsLockPeriod)
+	locker, err := lock.NewPostgresSessionLocker(
+		lock.WithLockTimeout(uint64(migrationsLockPeriod/time.Second), max(attempts, 1)),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	opts = append([]goose.ProviderOption{
+		goose.WithSessionLocker(locker),
+		goose.WithSlog(logger),
+		goose.WithVerbose(true),
+	}, opts...)
+
+	return goose.NewProvider(goose.DialectPostgres, db, os.DirFS(dir), opts...)
 }
 
 // migrateUp opens a migration DB connection and applies all pending up migrations in dir.
-func migrateUp(logger *slog.Logger, v *viper.Viper, dir string) error {
+func migrateUp(ctx context.Context, logger *slog.Logger, v *viper.Viper, dir string, opts ...goose.ProviderOption) error {
 	db, err := clients.NewPostgreSQLForMigrations(v)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = db.Close() }()
 
-	if err := setupGoose(logger); err != nil {
+	p, err := newProvider(logger, v, db, dir, opts...)
+	if errors.Is(err, goose.ErrNoMigrations) {
+		logger.Info("no migrations found", "dir", dir)
+		return nil
+	}
+	if err != nil {
 		return err
 	}
 
-	return goose.Up(db, dir)
+	_, err = p.Up(ctx)
+	return err
 }
 
 // migrateDown rolls back the most recently applied migration in dir.
-func migrateDown(logger *slog.Logger, v *viper.Viper, dir string) error {
+func migrateDown(ctx context.Context, logger *slog.Logger, v *viper.Viper, dir string, opts ...goose.ProviderOption) error {
 	db, err := clients.NewPostgreSQLForMigrations(v)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = db.Close() }()
 
-	if err := setupGoose(logger); err != nil {
+	p, err := newProvider(logger, v, db, dir, opts...)
+	if err != nil {
 		return err
 	}
 
-	return goose.Down(db, dir)
+	_, err = p.Down(ctx)
+	return err
 }
 
 // migrateCreate scaffolds a new migration file of migrationType in dir.
@@ -89,7 +118,7 @@ func MigrateUp(p *narada.Narada) *cli.Command {
 		Action: func(c *cli.Context) error {
 			p.Invoke(func(logger *slog.Logger, v *viper.Viper) error {
 				logger.Info("starting migrations")
-				if err := migrateUp(logger, v, c.String("dir")); err != nil {
+				if err := migrateUp(c.Context, logger, v, c.String("dir")); err != nil {
 					return err
 				}
 				logger.Info("finished migrating")
@@ -110,7 +139,7 @@ func MigrateDown(p *narada.Narada) *cli.Command {
 		Action: func(c *cli.Context) error {
 			p.Invoke(func(logger *slog.Logger, v *viper.Viper) error {
 				logger.Info("rolling back migration")
-				if err := migrateDown(logger, v, c.String("dir")); err != nil {
+				if err := migrateDown(c.Context, logger, v, c.String("dir")); err != nil {
 					return err
 				}
 				logger.Info("finished rollback")
