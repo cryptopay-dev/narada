@@ -2,6 +2,11 @@ module github.com/cryptopay-dev/narada
 
 go 1.26.0
 
+retract (
+	v1.7.1 // Superseded by v1.7.2.
+	v1.7.0 // Tagged on the v1.6.0 commit; the module proxy serves v1.6.0 code for it.
+)
+
 require (
 	github.com/bsm/redislock v0.7.1
 	github.com/chapsuk/worker v1.0.0
