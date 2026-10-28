@@ -2,8 +2,10 @@ package narada
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -29,6 +31,10 @@ func Err(err error) slog.Attr {
 // The handler chain is Slack -> Sentry (optional) -> text/json writer, so an
 // error record reaches both sinks and is still written to stderr.
 func NewLogger(config *viper.Viper) (*slog.Logger, error) {
+	return newLogger(config, os.Stderr)
+}
+
+func newLogger(config *viper.Viper, out io.Writer) (*slog.Logger, error) {
 	config.SetDefault("logger.formatter", "text")
 	config.SetDefault("logger.level", "debug")
 	config.SetDefault("logger.catch_errors", true)
@@ -38,15 +44,15 @@ func NewLogger(config *viper.Viper) (*slog.Logger, error) {
 		return nil, err
 	}
 
-	opts := &slog.HandlerOptions{Level: level}
+	opts := &slog.HandlerOptions{Level: level, ReplaceAttr: lowercaseLevel}
 
 	// Setting formatter
 	var handler slog.Handler
 	switch format := config.GetString("logger.formatter"); format {
 	case "text":
-		handler = slog.NewTextHandler(os.Stderr, opts)
+		handler = slog.NewTextHandler(out, opts)
 	case "json":
-		handler = slog.NewJSONHandler(os.Stderr, opts)
+		handler = slog.NewJSONHandler(out, opts)
 	default:
 		return nil, fmt.Errorf("unknown formatter: %s", format)
 	}
@@ -73,6 +79,25 @@ func Fatal(logger *slog.Logger, msg string, args ...any) {
 	logger.Error(msg, args...)
 	sentry.Flush(fatalFlushTimeout)
 	os.Exit(1)
+}
+
+// lowercaseLevel renders the level the way logrus did (debug/info/warning/error)
+// instead of slog's upper-case names, so existing log queries and alerts keep matching.
+func lowercaseLevel(groups []string, a slog.Attr) slog.Attr {
+	if len(groups) > 0 || a.Key != slog.LevelKey {
+		return a
+	}
+
+	level, ok := a.Value.Any().(slog.Level)
+	if !ok {
+		return a
+	}
+
+	if level == slog.LevelWarn {
+		return slog.String(slog.LevelKey, "warning")
+	}
+
+	return slog.String(slog.LevelKey, strings.ToLower(level.String()))
 }
 
 func parseLevel(lvl string) (slog.Level, error) {
