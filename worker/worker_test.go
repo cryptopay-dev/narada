@@ -2,7 +2,7 @@ package worker
 
 import (
 	"context"
-	"io"
+	"log/slog"
 	"os"
 	"sync"
 	"testing"
@@ -10,7 +10,6 @@ import (
 
 	"github.com/cryptopay-dev/narada/lock"
 	"github.com/go-redis/redis/v8"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/spf13/viper"
@@ -249,9 +248,6 @@ func TestNewWorkers(t *testing.T) {
 	})
 }
 
-func newNopLogger() *logrus.Logger {
-	logger := logrus.New()
-	logger.Out = io.Discard
-
-	return logger
+func newNopLogger() *slog.Logger {
+	return slog.New(slog.DiscardHandler)
 }

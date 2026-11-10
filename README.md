@@ -8,7 +8,7 @@
 
 ## What is under the hood?
 Under the hood a lot of different and cool packages such as:
-- Logrus
+- log/slog (stdlib)
 - Go-PG
 - Go-redis
 - Uber FX
@@ -31,7 +31,7 @@ Environment `BINDING_API` will be replaced to `binding.api`.
 
 
 ### Logger
-**Dependency:** `*logrus.Logger`  
+**Dependency:** `*slog.Logger`  
 **Configuration:**
 ```yaml
 logger: 
@@ -81,3 +81,11 @@ database:
 ```
 
 `migrate:up` and `migrate:down` hold a Postgres session advisory lock (goose's default lock ID) while they run, so migrators started concurrently — e.g. one init container per ECS task — apply each migration exactly once. The rest wait, then find nothing pending. A migrator that can't take the lock within `migrations_lock_timeout` fails. Session advisory locks need a direct connection or session pooling; they don't hold through a transaction-mode pooler.
+
+## Upgrading to v1.8
+
+v1.8 replaces logrus with `log/slog`; go-pg and go-redis v8 stay. Consumers need code changes.
+
+- Injected constructors take `*slog.Logger` instead of `*logrus.Logger`. Replace `log.WithError(err).Error("msg")` with `log.Error("msg", narada.Err(err))`, `log.WithField(k, v)` with `log.With(k, v)`, and `log.Fatal(...)` with `narada.Fatal(log, ...)` (slog has no fatal level — the record is emitted at error level and the process exits).
+- `NewLogrusSentryHook`/`NewLogrusSlackHook` became the `slog.Handler` decorators `NewSentryHandler`/`NewSlackHandler`.
+- `clients.NewPostgreSQL` takes `*slog.Logger`.
