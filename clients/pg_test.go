@@ -1,10 +1,10 @@
 package clients
 
 import (
+	"log/slog"
 	"os"
 	"testing"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -14,7 +14,7 @@ func TestNewPostgreSQL(t *testing.T) {
 	}
 
 	cfg := setupConfig()
-	logger := logrus.New()
+	logger := slog.New(slog.DiscardHandler)
 
 	db, err := NewPostgreSQL(cfg, logger)
 	if err != nil {
@@ -73,7 +73,7 @@ func setupConfig() *viper.Viper {
 }
 
 func TestNewPostgreSQLOptions(t *testing.T) {
-	logger := logrus.New()
+	logger := slog.New(slog.DiscardHandler)
 
 	// Missing address is rejected.
 	if _, err := NewPostgreSQL(viper.New(), logger); err == nil {
@@ -133,7 +133,7 @@ func TestNewPostgreSQLDebugHooks(t *testing.T) {
 	cfg := setupConfig()
 	cfg.Set("database.debug", true)
 
-	db, err := NewPostgreSQL(cfg, logrus.New())
+	db, err := NewPostgreSQL(cfg, slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatal(err)
 	}

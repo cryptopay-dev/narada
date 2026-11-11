@@ -4,7 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"log/slog"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/cryptopay-dev/narada"
@@ -12,7 +15,6 @@ import (
 
 	"github.com/pressly/goose/v3"
 	"github.com/pressly/goose/v3/lock"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/urfave/cli/v2"
 
@@ -29,8 +31,22 @@ const (
 	migrationsLockPeriod     = time.Second
 )
 
+// gooseLogger adapts a *slog.Logger to goose's printf-style Logger interface.
+type gooseLogger struct {
+	logger *slog.Logger
+}
+
+func (g gooseLogger) Printf(format string, v ...any) {
+	g.logger.Info(strings.TrimRight(fmt.Sprintf(format, v...), "\n"))
+}
+
+func (g gooseLogger) Fatalf(format string, v ...any) {
+	g.logger.Error(strings.TrimRight(fmt.Sprintf(format, v...), "\n"))
+	os.Exit(1)
+}
+
 // newProvider builds a goose provider that holds a Postgres advisory lock while migrating, so concurrent `migrate:up` runs (e.g. one per ECS task) apply each migration exactly once.
-func newProvider(logger *logrus.Logger, v *viper.Viper, db *sql.DB, dir string, opts ...goose.ProviderOption) (*goose.Provider, error) {
+func newProvider(logger *slog.Logger, v *viper.Viper, db *sql.DB, dir string, opts ...goose.ProviderOption) (*goose.Provider, error) {
 	v.SetDefault(migrationsLockTimeoutKey, DefaultMigrationsLockTimeout)
 
 	attempts := uint64(v.GetDuration(migrationsLockTimeoutKey) / migrationsLockPeriod)
@@ -43,7 +59,7 @@ func newProvider(logger *logrus.Logger, v *viper.Viper, db *sql.DB, dir string, 
 
 	opts = append([]goose.ProviderOption{
 		goose.WithSessionLocker(locker),
-		goose.WithLogger(logger),
+		goose.WithSlog(logger),
 		goose.WithVerbose(true),
 	}, opts...)
 
@@ -51,7 +67,7 @@ func newProvider(logger *logrus.Logger, v *viper.Viper, db *sql.DB, dir string, 
 }
 
 // migrateUp opens a migration DB connection and applies all pending up migrations in dir.
-func migrateUp(ctx context.Context, logger *logrus.Logger, v *viper.Viper, dir string, opts ...goose.ProviderOption) error {
+func migrateUp(ctx context.Context, logger *slog.Logger, v *viper.Viper, dir string, opts ...goose.ProviderOption) error {
 	db, err := clients.NewPostgreSQLForMigrations(v)
 	if err != nil {
 		return err
@@ -60,7 +76,7 @@ func migrateUp(ctx context.Context, logger *logrus.Logger, v *viper.Viper, dir s
 
 	p, err := newProvider(logger, v, db, dir, opts...)
 	if errors.Is(err, goose.ErrNoMigrations) {
-		logger.Printf("no migrations found in %s", dir)
+		logger.Info("no migrations found", "dir", dir)
 		return nil
 	}
 	if err != nil {
@@ -72,7 +88,7 @@ func migrateUp(ctx context.Context, logger *logrus.Logger, v *viper.Viper, dir s
 }
 
 // migrateDown rolls back the most recently applied migration in dir.
-func migrateDown(ctx context.Context, logger *logrus.Logger, v *viper.Viper, dir string, opts ...goose.ProviderOption) error {
+func migrateDown(ctx context.Context, logger *slog.Logger, v *viper.Viper, dir string, opts ...goose.ProviderOption) error {
 	db, err := clients.NewPostgreSQLForMigrations(v)
 	if err != nil {
 		return err
@@ -89,8 +105,9 @@ func migrateDown(ctx context.Context, logger *logrus.Logger, v *viper.Viper, dir
 }
 
 // migrateCreate scaffolds a new migration file of migrationType in dir.
-func migrateCreate(logger *logrus.Logger, dir, name, migrationType string) error {
-	goose.SetLogger(logger)
+func migrateCreate(logger *slog.Logger, dir, name, migrationType string) error {
+	goose.SetLogger(gooseLogger{logger: logger})
+
 	return goose.Create(nil, dir, name, migrationType)
 }
 
@@ -101,12 +118,12 @@ func MigrateUp(p *narada.Narada) *cli.Command {
 			&cli.StringFlag{Name: "dir", Value: DefaultMigrationsDir},
 		},
 		Action: func(c *cli.Context) error {
-			p.Invoke(func(logger *logrus.Logger, v *viper.Viper) error {
-				logger.Println("starting migrations")
+			p.Invoke(func(logger *slog.Logger, v *viper.Viper) error {
+				logger.Info("starting migrations")
 				if err := migrateUp(c.Context, logger, v, c.String("dir")); err != nil {
 					return err
 				}
-				logger.Println("finished migrating")
+				logger.Info("finished migrating")
 				return nil
 			})
 
@@ -122,12 +139,12 @@ func MigrateDown(p *narada.Narada) *cli.Command {
 			&cli.StringFlag{Name: "dir", Value: DefaultMigrationsDir},
 		},
 		Action: func(c *cli.Context) error {
-			p.Invoke(func(logger *logrus.Logger, v *viper.Viper) error {
-				logger.Println("rolling back migration")
+			p.Invoke(func(logger *slog.Logger, v *viper.Viper) error {
+				logger.Info("rolling back migration")
 				if err := migrateDown(c.Context, logger, v, c.String("dir")); err != nil {
 					return err
 				}
-				logger.Println("finished rollback")
+				logger.Info("finished rollback")
 				return nil
 			})
 
@@ -145,14 +162,14 @@ func CreateMigration(p *narada.Narada) *cli.Command {
 			&cli.StringFlag{Name: "type", Value: DefaultMigrationsType},
 		},
 		Action: func(c *cli.Context) error {
-			p.Invoke(func(logger *logrus.Logger, v *viper.Viper) error {
+			p.Invoke(func(logger *slog.Logger, v *viper.Viper) error {
 				name := c.String("name")
 
 				if name == "" {
 					return errors.New("name cannot be empty")
 				}
 
-				logger.Printf("creating sql migration: %s", name)
+				logger.Info("creating sql migration", "name", name)
 				return migrateCreate(logger, c.String("dir"), name, c.String("type"))
 			})
 

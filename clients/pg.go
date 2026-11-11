@@ -6,19 +6,19 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"strings"
 	"time"
 
 	pg "github.com/go-pg/pg/v10"
 	_ "github.com/lib/pq"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
 type (
 	dbQueryHook struct {
-		logger *logrus.Entry
+		logger *slog.Logger
 	}
 
 	ctxKey int
@@ -48,19 +48,19 @@ func (d dbQueryHook) AfterQuery(ctx context.Context, event *pg.QueryEvent) error
 
 	q, err := event.FormattedQuery()
 	if err != nil {
-		d.logger.WithError(err).Error("error getting formatted query")
+		d.logger.Error("error getting formatted query", slog.Any("error", err))
 		return nil
 	}
 
-	d.logger.WithFields(logrus.Fields{
-		"query":   string(q),
-		"elapsed": time.Since(st),
-	}).Info("query completed")
+	d.logger.Info("query completed",
+		"query", string(q),
+		"elapsed", time.Since(st),
+	)
 
 	return nil
 }
 
-func NewPostgreSQL(config *viper.Viper, logger *logrus.Logger) (*pg.DB, error) {
+func NewPostgreSQL(config *viper.Viper, logger *slog.Logger) (*pg.DB, error) {
 	cfg, err := parseDBConfig(config)
 	if err != nil {
 		return nil, err
@@ -89,7 +89,7 @@ func NewPostgreSQL(config *viper.Viper, logger *logrus.Logger) (*pg.DB, error) {
 	connection := pg.Connect(opts)
 
 	if cfg.debug {
-		entry := logger.WithField("module", "db")
+		entry := logger.With("module", "db")
 		connection.AddQueryHook(dbQueryHook{
 			logger: entry,
 		})

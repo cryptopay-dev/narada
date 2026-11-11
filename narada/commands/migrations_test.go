@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/pressly/goose/v3"
 	"github.com/pressly/goose/v3/lock"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
@@ -100,7 +100,7 @@ func dropTestTables(t *testing.T, v *viper.Viper) {
 // future goose bump that breaks migration application or rollback fails here.
 func TestMigrateUpDown(t *testing.T) {
 	v := migrationTestConfig(t)
-	logger := logrus.New()
+	logger := slog.New(slog.DiscardHandler)
 	ctx := context.Background()
 
 	// Clean slate before, guaranteed teardown after.
@@ -135,7 +135,7 @@ func TestMigrateUpDown(t *testing.T) {
 // TestMigrateUpConcurrent races several migrators, as ECS does when it starts one init container per task: the advisory lock must serialize them so the migration is applied exactly once.
 func TestMigrateUpConcurrent(t *testing.T) {
 	v := migrationTestConfig(t)
-	logger := logrus.New()
+	logger := slog.New(slog.DiscardHandler)
 
 	dropTestTables(t, v)
 	t.Cleanup(func() { dropTestTables(t, v) })
@@ -185,7 +185,7 @@ func TestMigrateUpConcurrent(t *testing.T) {
 func TestMigrateUpLockTimeout(t *testing.T) {
 	v := migrationTestConfig(t)
 	v.Set(migrationsLockTimeoutKey, "5s")
-	logger := logrus.New()
+	logger := slog.New(slog.DiscardHandler)
 	ctx := context.Background()
 
 	dropTestTables(t, v)
@@ -226,7 +226,7 @@ func TestMigrateUpLockTimeout(t *testing.T) {
 func TestMigrateCreate(t *testing.T) {
 	dir := t.TempDir()
 
-	if err := migrateCreate(logrus.New(), dir, "add_widget", DefaultMigrationsType); err != nil {
+	if err := migrateCreate(slog.New(slog.DiscardHandler), dir, "add_widget", DefaultMigrationsType); err != nil {
 		t.Fatalf("migrateCreate: %v", err)
 	}
 
