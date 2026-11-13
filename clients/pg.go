@@ -38,7 +38,7 @@ func (d *dbQueryHook) BeforeQuery(ctx context.Context, _ *bun.QueryEvent) contex
 }
 
 func (d *dbQueryHook) AfterQuery(_ context.Context, event *bun.QueryEvent) {
-	if event.Err != nil {
+	if event.Err != nil && !errors.Is(event.Err, sql.ErrNoRows) {
 		d.logger.Error("query failed",
 			"query", event.Query,
 			"elapsed", time.Since(event.StartTime),
