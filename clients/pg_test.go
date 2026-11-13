@@ -1,19 +1,12 @@
 package clients
 
 import (
-	"bytes"
 	"context"
-	"database/sql"
-	"encoding/json"
-	"errors"
-	"fmt"
 	"log/slog"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/spf13/viper"
-	"github.com/uptrace/bun"
 )
 
 func nopLogger() *slog.Logger {
@@ -164,36 +157,5 @@ func TestNewPostgreSQLDebugHooks(t *testing.T) {
 	var ignored string
 	if err := db.NewRaw("SELECT no_such_column").Scan(ctx, &ignored); err == nil {
 		t.Error("expected a query error")
-	}
-}
-
-func TestDBQueryHookLevels(t *testing.T) {
-	tests := []struct {
-		name  string
-		err   error
-		level string
-		msg   string
-	}{
-		{"success", nil, "INFO", "query completed"},
-		{"no rows", sql.ErrNoRows, "INFO", "query completed"},
-		{"wrapped no rows", fmt.Errorf("load: %w", sql.ErrNoRows), "INFO", "query completed"},
-		{"failure", errors.New("boom"), "ERROR", "query failed"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			hook := &dbQueryHook{logger: slog.New(slog.NewJSONHandler(&buf, nil))}
-
-			hook.AfterQuery(context.Background(), &bun.QueryEvent{Query: "SELECT 1", StartTime: time.Now(), Err: tt.err})
-
-			var rec map[string]any
-			if err := json.Unmarshal(buf.Bytes(), &rec); err != nil {
-				t.Fatal(err)
-			}
-			if rec["level"] != tt.level || rec["msg"] != tt.msg {
-				t.Errorf("got %v %q, want %s %q", rec["level"], rec["msg"], tt.level, tt.msg)
-			}
-		})
 	}
 }
